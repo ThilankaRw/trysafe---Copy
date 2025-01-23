@@ -30,21 +30,34 @@ export function CreateAccountForm() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const { data, error } = await authClient.signUp.email({
-      email: email,
-      password: password,
-      name: name,
-      image: "/404",
-    });
+    try {
+      const { data, error } = await authClient.signUp.email({
+        email: email,
+        password: password,
+        name: name,
+        image: "/404",
+      });
 
-    if (error) {
+      console.log({
+        data,
+        error,
+      });
+      if (error) {
+        toast.error(error.message);
+        alert(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success("Account created successfully");
+      router.push("/login");
+    } catch (error: any) {
       toast.error(error.message);
       setIsLoading(false);
-      return;
+      console.log({
+        error,
+      });
     }
-
-    toast.success("Account created successfully");
-    router.push("/login");
   };
 
   return (
