@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  id            String    @id  @map("_id") 
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
   email         String    @unique
   name          String?
   emailVerified Boolean
@@ -26,11 +26,14 @@ model User {
 
   passkeys Passkey[]
 
+  twoFactorEnabled Boolean?
+  twofactors       TwoFactor[]
+
   @@map("user")
 }
 
 model Session {
-  id        String   @id @map("_id")
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   expiresAt DateTime
   token     String
   createdAt DateTime
@@ -45,7 +48,7 @@ model Session {
 }
 
 model Account {
-  id                    String    @id @map("_id")
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
   accountId             String
   providerId            String
   userId                String    @db.ObjectId
@@ -64,7 +67,7 @@ model Account {
 }
 
 model Verification {
-  id         String    @id @map("_id")
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
   identifier String
   value      String
   expiresAt  DateTime
@@ -75,7 +78,7 @@ model Verification {
 }
 
 model Passkey {
-  id           String    @id @map("_id")
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
   name         String?
   publicKey    String
   userId       String    @db.ObjectId
@@ -88,4 +91,14 @@ model Passkey {
   createdAt    DateTime?
 
   @@map("passkey")
+}
+
+model TwoFactor {
+  id          String @id @map("_id")
+  secret      String
+  backupCodes String
+  userId      String @db.ObjectId
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("twoFactor")
 }

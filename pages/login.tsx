@@ -4,17 +4,6 @@ import { toast } from "sonner";
 import { LoginForm } from "../components/loginForm";
 
 export default function LoginPage() {
-  useEffect(() => {
-    const newUser = localStorage.getItem("newUser");
-    if (newUser) {
-      const { email } = JSON.parse(newUser);
-      toast.success("Account created successfully", {
-        description: `You can now login with your email: ${email}`,
-      });
-      localStorage.removeItem("newUser");
-    }
-  }, []);
-
   return (
     <main className="flex min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       <div className="flex flex-col md:flex-row w-full">

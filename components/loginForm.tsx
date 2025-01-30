@@ -44,9 +44,8 @@ export function LoginForm() {
     const { data, error } = await authClient.signIn.email({
       email,
       password,
+      callbackURL: "/dashboard",
     });
-
-    console.log(data, error);
 
     if (error) {
       toast.error(error.message);
@@ -55,8 +54,6 @@ export function LoginForm() {
     }
 
     toast.success("Login successful");
-
-    setIsLoading(false);
   };
 
   return (
