@@ -12,5 +12,10 @@ export const auth = betterAuth({
     enabled: true,
   },
   advanced: { generateId: false },
-  plugins: [passkey(), twoFactor({})],
+  plugins: [
+    passkey(),
+    twoFactor({
+      issuer: "TriSafe",
+    }),
+  ],
 });

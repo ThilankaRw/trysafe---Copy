@@ -94,7 +94,7 @@ model Passkey {
 }
 
 model TwoFactor {
-  id          String @id @map("_id")
+  id          String @id @map("_id") @db.ObjectId  @default(auto())
   secret      String
   backupCodes String
   userId      String @db.ObjectId

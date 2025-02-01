@@ -41,19 +41,46 @@ export function LoginForm() {
     //   toast.error("Invalid email or password");
     // }
 
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-      callbackURL: "/dashboard",
-    });
+    const { data, error } = await authClient.signIn.email(
+      {
+        email,
+        password,
+        rememberMe: formData.get("remember") === "on",
+        // callbackURL: "/dashboard",
+      },
+      {
+        onSuccess: async (conext) => {
+          console.log({ conext });
+          if (conext.data.twoFactorRedirect) {
+            router.push("/2fa-selection");
+            return;
+          }
 
-    if (error) {
-      toast.error(error.message);
-      setIsLoading(false);
-      return;
-    }
+          // redirect to setup 2fa
+          const res = await authClient.twoFactor.enable({
+            password: password,
+          });
 
-    toast.success("Login successful");
+          console.log({ res });
+
+          if (res.error) {
+            toast.error(res.error.message);
+            setIsLoading(false);
+            return;
+          }
+
+          toast.success("Login successful");
+          router.push(
+            "/security-onboarding?token=" +
+              encodeURIComponent(btoa(res.data.totpURI))
+          );
+        },
+        onError: (error) => {
+          toast.error(error.error.message);
+          setIsLoading(false);
+        },
+      }
+    );
   };
 
   return (
