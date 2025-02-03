@@ -10,7 +10,7 @@ export const authClient = createAuthClient({
     twoFactorClient({
       onTwoFactorRedirect() {
         if (typeof window !== "undefined") {
-          window.location.href = "/2fa-verification"; // Next.js redirect is not available here
+          window.location.href = "/2fa";
         }
       },
     }),

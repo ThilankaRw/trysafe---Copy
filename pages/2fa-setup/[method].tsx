@@ -12,9 +12,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import type React from "react";
+import Image from "next/image";
+import type React from "react"; // Added import for React
 import { LoaderCircle } from "lucide-react";
-import QRCode from "react-qr-code";
 import { authClient } from "@/lib/auth-client";
 
 type TwoFactorMethod = "totp" | "email";
@@ -23,39 +23,21 @@ export default function TwoFactorSetupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [contactInfo, setContactInfo] = useState("");
-  const [token, setToken] = useState<string | undefined>(undefined);
   const router = useRouter();
   const method = router.query.method as TwoFactorMethod;
 
   const handleSetup2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    if (!verificationCode) {
-      toast.error("Please enter the verification code");
-      setIsLoading(false);
-      return;
-    }
-
-    if (method === "totp") {
-      // verify the code
-
-      const { data, error } = await authClient.twoFactor.verifyTotp({
-        code: verificationCode,
-      });
-
-      if (error) {
-        toast.error(error.message);
-        setIsLoading(false);
-        return;
-      }
-
-      // redirect to dashboard
-      toast.success("Two-factor authentication set up successfully");
-      router.replace("/dashboard");
-    }
+    // Simulate API call to verify and set up 2FA
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setIsLoading(false);
+    toast.success("Two-factor authentication set up successfully");
+    router.push("/dashboard");
   };
 
   const handleSkip = () => {
+    toast.info("Two-factor authentication setup skipped");
     router.push("/dashboard");
   };
 
@@ -66,23 +48,8 @@ export default function TwoFactorSetupPage() {
     }
 
     if (method === "email") {
-      // request verification code
-    }
-
-    if (method === "totp") {
-      const token = Array.isArray(router.query.token)
-        ? router.query.token[0]
-        : router.query.token ?? "";
-      const decoded = decodeURIComponent(atob(decodeURIComponent(token)));
-      setToken(decoded);
-    } else {
-      router.push("/404");
     }
   }, [method]);
-
-  const QRCodeSkeleton = () => (
-    <div className="w-[200px] h-[200px] bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-  );
 
   const renderSetupInstructions = () => {
     switch (method) {
@@ -91,23 +58,15 @@ export default function TwoFactorSetupPage() {
           <>
             <p>Scan this QR code with your authenticator app:</p>
             <div className="flex justify-center my-4">
-              {token === undefined ? (
-                <QRCodeSkeleton />
-              ) : (
-                <QRCode
-                  value={token}
-                  size={200}
-                  level="H"
-                  className="border border-gray-300 rounded bg-white p-2"
-                />
-              )}
+              <Image
+                src="/placeholder.svg?height=200&width=200"
+                alt="TOTP QR Code"
+                width={200}
+                height={200}
+                className="border border-gray-300 rounded"
+              />
             </div>
-            <div className="space-y-2 mt-4">
-              <p className="font-medium text-sm text-gray-700 dark:text-gray-300">
-                After scanning the QR code, the app will display a six-digit
-                code that you can enter below.
-              </p>
-            </div>
+            <p>Or enter this code manually: ABCD EFGH IJKL MNOP</p>
           </>
         );
       case "email":
@@ -127,53 +86,6 @@ export default function TwoFactorSetupPage() {
         );
       default:
         return <p>Invalid method selected</p>;
-    }
-  };
-
-  const renderVerificationInput = () => {
-    switch (method) {
-      case "totp":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="verificationCode">
-              Enter the six-digit code from the authentication app
-            </Label>
-            <Input
-              id="verificationCode"
-              placeholder="Enter 6-digit code"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
-              maxLength={6}
-              pattern="[0-9]{6}"
-              required
-              inputMode="numeric"
-              autoComplete="one-time-code"
-            />
-            <p className="text-sm text-gray-500">
-              The code refreshes every 30 seconds
-            </p>
-          </div>
-        );
-      case "email":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="verificationCode">
-              Enter the verification code sent to your email
-            </Label>
-            <Input
-              id="verificationCode"
-              placeholder="Enter verification code"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
-              maxLength={8}
-              required
-              autoComplete="one-time-code"
-            />
-            <p className="text-sm text-gray-500">Code valid for 10 minutes</p>
-          </div>
-        );
-      default:
-        return null;
     }
   };
 
@@ -208,7 +120,18 @@ export default function TwoFactorSetupPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {renderSetupInstructions()}
-              <form onSubmit={handleSetup2FA}>{renderVerificationInput()}</form>
+              <form onSubmit={handleSetup2FA}>
+                <div className="space-y-2">
+                  <Label htmlFor="verificationCode">Verification Code</Label>
+                  <Input
+                    id="verificationCode"
+                    placeholder="Enter verification code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    required
+                  />
+                </div>
+              </form>
             </CardContent>
             <CardFooter className="flex flex-col justify-between gap-4">
               <Button

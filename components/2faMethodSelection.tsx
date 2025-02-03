@@ -28,7 +28,7 @@ export function TwoFactorMethodSelection() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     if (method && ["sms", "totp", "email"].includes(method)) {
-      router.push(`/2fa-verify?method=${method}`);
+      router.push(`/2fa-verification?method=${method}`);
     } else {
       setError("Invalid 2FA method selected");
     }
