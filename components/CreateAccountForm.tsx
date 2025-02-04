@@ -50,7 +50,24 @@ export function CreateAccountForm() {
       }
 
       toast.success("Account created successfully");
-      router.push("/login");
+      // redirect to setup 2fa
+      const res = await authClient.twoFactor.enable({
+        password: password,
+      });
+
+      console.log({ res });
+
+      if (res.error) {
+        toast.error(res.error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success("Login successful");
+      router.push(
+        "/security-onboarding?token=" +
+          encodeURIComponent(btoa(res.data.totpURI))
+      );
     } catch (error: any) {
       toast.error(error.message);
       setIsLoading(false);

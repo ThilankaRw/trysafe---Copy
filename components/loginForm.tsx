@@ -52,7 +52,7 @@ export function LoginForm() {
         onSuccess: async (conext) => {
           console.log({ conext });
           if (conext.data.twoFactorRedirect) {
-            router.push("/2fa-selection");
+            router.push("/2fa");
             return;
           }
 

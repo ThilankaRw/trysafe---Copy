@@ -14,6 +14,7 @@ import Image from "next/image";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 
 type TwoFactorMethod = "sms" | "totp" | "email";
 
@@ -52,6 +53,9 @@ export default function SecurityOnboardingPage() {
         return;
       }
       url.searchParams.set("token", secret);
+    }
+
+    if (selectedMethod === "email") {
     }
 
     router.push(url.toString());
