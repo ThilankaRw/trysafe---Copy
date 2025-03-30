@@ -1,0 +1,95 @@
+.dashboard-container {
+  background-color: #ffffff;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.dropbox-layout {
+  display: flex;
+  padding: 20px;
+}
+
+.sidebar {
+  width: 250px;
+  border-right: 1px solid #e6e8eb;
+  padding: 20px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+}
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.file-item {
+  border: 1px solid #e6e8eb;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.file-item:hover {
+  background-color: #f8f9fa;
+}
+
+.upload-button {
+  background-color: #0061fe;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.header {
+  padding: 15px 30px;
+  border-bottom: 1px solid #e6e8eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 20px 0 15px 0;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.sidebar-item:hover {
+  background-color: #f0f2f5;
+}
+
+.sidebar-item i {
+  margin-right: 10px;
+}
+
+.storage-bar {
+  background: #f0f2f5;
+  height: 8px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.storage-used {
+  background: #0061fe;
+  height: 100%;
+  border-radius: 4px;
+  width: 65%;
+}

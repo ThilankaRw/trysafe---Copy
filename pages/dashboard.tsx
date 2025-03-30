@@ -1,7 +1,5 @@
-export default function Dashboard() {
-  return (
-    <div>
-      <h1>Dashboard</h1>
-    </div>
-  );
+import Dashboard from "@/components/dashboard/Dashboard";
+
+export default function DashboardPage() {
+  return <Dashboard />;
 }

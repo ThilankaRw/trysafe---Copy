@@ -86,7 +86,10 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Enterprise Login</CardTitle>
+        <CardTitle className="text-2xl font-bold">
+          {" "}
+          Login Your Account
+        </CardTitle>
         <CardDescription>
           Enter your credentials to access your account
         </CardDescription>

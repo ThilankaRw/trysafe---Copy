@@ -69,7 +69,7 @@ export default function SecurityOnboardingPage() {
   return (
     <main className="flex min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       <div className="flex flex-col md:flex-row w-full">
-        <div className="hidden md:flex md:w-1/2 bg-blue-600 justify-center items-center p-12">
+        <div className="hidden md:flex md:w-1/2 bg-cyan-700 justify-center items-center p-12">
           <div className="max-w-md text-white">
             <h1 className="text-4xl font-bold mb-6">
               Enhance Your Account Security
@@ -91,11 +91,10 @@ export default function SecurityOnboardingPage() {
             <CardHeader className="space-y-1">
               <div className="flex justify-center mb-4">
                 <Image
-                  src="/placeholder.svg?height=80&width=80"
+                  src="/2ss.png"
                   alt="EnterpriseCore Logo"
                   width={80}
                   height={80}
-                  className="bg-blue-600 p-2 rounded-full"
                 />
               </div>
               <CardTitle className="text-2xl font-bold text-center">

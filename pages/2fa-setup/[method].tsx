@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,132 +21,95 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 type TwoFactorMethod = "totp" | "email";
 
-export default function TwoFactorSetupPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [isPageLoading, setIsPageLoading] = useState(true);
-  const [isInitialSending, setIsInitialSending] = useState(true);
-  const [sendFailed, setSendFailed] = useState(false);
+interface TwoFactorState {
+  isLoading: boolean;
+  isPageLoading: boolean;
+  isInitialSending: boolean;
+  sendFailed: boolean;
+  emailSent: boolean;
+}
 
-  const { data: user, isPending: isUserLoading } = authClient.useSession();
-  console.log({ user });
+interface EmailSetupContentProps {
+  isInitialSending: boolean;
+  user: { user: { email: string } } | null;
+  sendFailed: boolean;
+  emailSent: boolean;
+  isLoading: boolean;
+  verificationCode: string;
+  countdown: number;
+  handleSendEmail: () => Promise<void>;
+  handleSetup2FA: (e: React.FormEvent) => Promise<void>;
+  setVerificationCode: (code: string) => void;
+  formatTime: (seconds: number) => string;
+}
 
-  const [token, setToken] = useState<string | undefined>(undefined);
-  const [countdown, setCountdown] = useState(0);
-  const [emailSent, setEmailSent] = useState(false);
-  const router = useRouter();
-  const method = router.query.method as TwoFactorMethod;
+// Move components outside main component
+const QRCodeSkeleton = memo(() => (
+  <div className="w-[200px] h-[200px] bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+));
 
-  const startCountdown = useCallback(() => {
-    setCountdown(600); // 10 minutes in seconds
-    setEmailSent(true);
-  }, []);
+QRCodeSkeleton.displayName = "QRCodeSkeleton";
 
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && emailSent) {
-      setEmailSent(false);
-    }
-  }, [countdown, emailSent]);
+const LoadingView = memo(() => (
+  <div className="flex flex-col md:flex-row w-full">
+    <div className="hidden md:flex md:w-1/2 bg-cyan-700 justify-center items-center p-12">
+      <div className="max-w-md text-white space-y-6">
+        <Skeleton className="h-12 w-3/4 bg-white/20" />
+        <Skeleton className="h-8 w-full bg-white/20" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-2/3 bg-white/20" />
+          <Skeleton className="h-6 w-1/2 bg-white/20" />
+          <Skeleton className="h-6 w-3/4 bg-white/20" />
+        </div>
+      </div>
+    </div>
+    <div className="w-full md:w-1/2 flex items-center justify-center p-4 md:p-12">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-4">
+          <div className="space-y-2 text-center">
+            <Skeleton className="h-8 w-3/4 mx-auto" />
+            <Skeleton className="h-4 w-2/3 mx-auto" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div className="flex flex-col items-center space-y-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="space-y-2 w-full">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6 mx-auto" />
+              </div>
+              <Skeleton className="h-[200px] w-full rounded-lg" />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <div className="space-y-2 w-full">
+            <Skeleton className="h-10 w-full rounded" />
+            <Skeleton className="h-10 w-full rounded" />
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
+  </div>
+));
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
+LoadingView.displayName = "LoadingView";
 
-  const handleSendEmail = async () => {
-    setIsLoading(true);
-    try {
-      const { error } = await authClient.twoFactor.sendOtp();
-
-      if (error) throw new Error(error.message);
-
-      toast.success("Verification code sent successfully");
-      startCountdown();
-    } catch (error) {
-      toast.error("Failed to send verification code");
-    }
-    setIsLoading(false);
-  };
-
-  const handleSetup2FA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    if (!verificationCode) {
-      toast.error("Please enter the verification code");
-      setIsLoading(false);
-      return;
-    }
-
-    if (method === "totp") {
-      // verify the code
-
-      const { data, error } = await authClient.twoFactor.verifyTotp({
-        code: verificationCode,
-      });
-
-      if (error) {
-        toast.error(error.message);
-        setIsLoading(false);
-        return;
-      }
-
-      // redirect to dashboard
-      toast.success("Two-factor authentication set up successfully");
-      router.replace("/dashboard");
-    }
-  };
-
-  const handleSkip = () => {
-    router.push("/dashboard");
-  };
-
-  useEffect(() => {
-    if (!method) return;
-    if (!["totp", "email"].includes(String(method))) {
-      router.push("/404");
-    }
-
-    if (method === "email") {
-      setIsInitialSending(true);
-      authClient.twoFactor
-        .sendOtp()
-        .then(({ error }) => {
-          if (error) {
-            setSendFailed(true);
-            toast.error("Failed to send verification code");
-          } else {
-            setEmailSent(true);
-            startCountdown();
-          }
-        })
-        .finally(() => {
-          setIsInitialSending(false);
-        });
-    } else if (method === "totp") {
-      const token = Array.isArray(router.query.token)
-        ? router.query.token[0]
-        : (router.query.token ?? "");
-      const decoded = decodeURIComponent(atob(decodeURIComponent(token)));
-      setToken(decoded);
-    } else {
-      router.push("/404");
-    }
-  }, [method]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsPageLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const QRCodeSkeleton = () => (
-    <div className="w-[200px] h-[200px] bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-  );
-
-  const EmailSetupContent = () => (
+const EmailSetupContent = memo<EmailSetupContentProps>(
+  ({
+    isInitialSending,
+    user,
+    sendFailed,
+    emailSent,
+    isLoading,
+    verificationCode,
+    countdown,
+    handleSendEmail,
+    handleSetup2FA,
+    setVerificationCode,
+    formatTime,
+  }) => (
     <div className="space-y-6">
       <div className="flex flex-col items-center justify-center space-y-3 py-4">
         <div className="h-16 w-16 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
@@ -246,7 +209,7 @@ export default function TwoFactorSetupPage() {
             <div className="text-sm">
               <p className="font-medium">Note:</p>
               <ul className="list-disc list-inside space-y-1 mt-1">
-                <li>Check your spam folder if you don't see the email</li>
+                <li>Check your spam folder if you don&apos;t see the email</li>
                 <li>The code expires in 10 minutes</li>
               </ul>
             </div>
@@ -254,9 +217,156 @@ export default function TwoFactorSetupPage() {
         </div>
       )}
     </div>
-  );
+  )
+);
+EmailSetupContent.displayName = "EmailSetupContent";
 
-  const renderSetupInstructions = () => {
+export default function TwoFactorSetupPage(): JSX.Element {
+  // Consolidate related state
+  const [state, setState] = useState<TwoFactorState>({
+    isLoading: false,
+    isPageLoading: true,
+    isInitialSending: true,
+    sendFailed: false,
+    emailSent: false,
+  });
+
+  const [verificationCode, setVerificationCode] = useState("");
+  const [token, setToken] = useState<string | undefined>(undefined);
+  const [countdown, setCountdown] = useState(0);
+
+  const router = useRouter();
+  const method = router.query.method as TwoFactorMethod;
+  const { data: user, isPending: isUserLoading } = authClient.useSession();
+
+  // Memoized functions
+  const formatTime = useCallback((seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  }, []);
+
+  const startCountdown = useCallback((): void => {
+    setCountdown(600);
+    setState((prev) => ({ ...prev, emailSent: true }));
+  }, []);
+
+  const handleSendEmail = useCallback(async (): Promise<void> => {
+    setState((prev) => ({ ...prev, isLoading: true }));
+    try {
+      const { error } = await authClient.twoFactor.sendOtp();
+      if (error) throw error;
+      toast.success("Verification code sent successfully");
+      startCountdown();
+    } catch (error) {
+      toast.error("Failed to send verification code");
+    }
+    setState((prev) => ({ ...prev, isLoading: false }));
+  }, [startCountdown]);
+
+  // Optimized effects
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    } else if (countdown === 0 && state.emailSent) {
+      setState((prev) => ({ ...prev, emailSent: false }));
+    }
+    return () => clearTimeout(timer);
+  }, [countdown, state.emailSent]);
+
+  useEffect(() => {
+    if (!method || !["totp", "email"].includes(String(method))) {
+      router.push("/404");
+      return;
+    }
+
+    const initMethod = async () => {
+      if (method === "email") {
+        try {
+          const { error } = await authClient.twoFactor.sendOtp();
+          setState((prev) => ({
+            ...prev,
+            sendFailed: !!error,
+            emailSent: !error,
+            isInitialSending: false,
+          }));
+          if (error) {
+            toast.error("Failed to send verification code");
+          } else {
+            startCountdown();
+          }
+        } catch {
+          setState((prev) => ({
+            ...prev,
+            sendFailed: true,
+            isInitialSending: false,
+          }));
+        }
+      } else if (method === "totp") {
+        const tokenParam = Array.isArray(router.query.token)
+          ? router.query.token[0]
+          : (router.query.token ?? "");
+        const decoded = decodeURIComponent(
+          atob(decodeURIComponent(tokenParam))
+        );
+        setToken(decoded);
+      }
+    };
+
+    initMethod();
+  }, [method, router, startCountdown]);
+
+  const handleSetup2FA = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      if (!verificationCode) {
+        throw new Error("Please enter the verification code");
+      }
+
+      if (method === "totp") {
+        const { error } = await authClient.twoFactor.verifyTotp({
+          code: verificationCode,
+        });
+
+        if (error) throw error;
+
+        toast.success("Two-factor authentication set up successfully");
+        router.replace("/dashboard");
+      } else if (method === "email") {
+        const { error } = await authClient.twoFactor.verifyOtp({
+          code: verificationCode,
+          trustDevice: true,
+        });
+
+        if (error) throw error;
+
+        toast.success("Two-factor authentication set up successfully");
+        router.replace("/dashboard");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Verification failed"
+      );
+      setState((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleSkip = (): void => {
+    router.push("/dashboard");
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setState((prev) => ({ ...prev, isPageLoading: false })),
+      500
+    );
+    return () => clearTimeout(timer);
+  }, []);
+
+  const renderSetupInstructions = (): JSX.Element => {
     switch (method) {
       case "totp":
         return (
@@ -283,13 +393,27 @@ export default function TwoFactorSetupPage() {
           </>
         );
       case "email":
-        return <EmailSetupContent />;
+        return (
+          <EmailSetupContent
+            isInitialSending={state.isInitialSending}
+            user={user}
+            sendFailed={state.sendFailed}
+            emailSent={state.emailSent}
+            isLoading={state.isLoading}
+            verificationCode={verificationCode}
+            countdown={countdown}
+            handleSendEmail={handleSendEmail}
+            handleSetup2FA={handleSetup2FA}
+            setVerificationCode={setVerificationCode}
+            formatTime={formatTime}
+          />
+        );
       default:
         return <p>Invalid method selected</p>;
     }
   };
 
-  const renderVerificationInput = () => {
+  const renderVerificationInput = (): JSX.Element | null => {
     switch (method) {
       case "totp":
         return (
@@ -320,51 +444,7 @@ export default function TwoFactorSetupPage() {
     }
   };
 
-  const LoadingView = () => (
-    <div className="flex flex-col md:flex-row w-full">
-      <div className="hidden md:flex md:w-1/2 bg-blue-600 justify-center items-center p-12">
-        <div className="max-w-md text-white space-y-6">
-          <Skeleton className="h-12 w-3/4 bg-white/20" />
-          <Skeleton className="h-8 w-full bg-white/20" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-2/3 bg-white/20" />
-            <Skeleton className="h-6 w-1/2 bg-white/20" />
-            <Skeleton className="h-6 w-3/4 bg-white/20" />
-          </div>
-        </div>
-      </div>
-      <div className="w-full md:w-1/2 flex items-center justify-center p-4 md:p-12">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-4">
-            <div className="space-y-2 text-center">
-              <Skeleton className="h-8 w-3/4 mx-auto" />
-              <Skeleton className="h-4 w-2/3 mx-auto" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex flex-col items-center space-y-4">
-                <Skeleton className="h-16 w-16 rounded-full" />
-                <div className="space-y-2 w-full">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6 mx-auto" />
-                </div>
-                <Skeleton className="h-[200px] w-full rounded-lg" />
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <div className="space-y-2 w-full">
-              <Skeleton className="h-10 w-full rounded" />
-              <Skeleton className="h-10 w-full rounded" />
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
-    </div>
-  );
-
-  if (isUserLoading || isPageLoading) {
+  if (isUserLoading || state.isPageLoading) {
     return (
       <main className="flex min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
         <LoadingView />
@@ -375,7 +455,7 @@ export default function TwoFactorSetupPage() {
   return (
     <main className="flex min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       <div className="flex flex-col md:flex-row w-full">
-        <div className="hidden md:flex md:w-1/2 bg-blue-600 justify-center items-center p-12">
+        <div className="hidden md:flex md:w-1/2 bg-cyan-700 justify-center items-center p-12">
           <div className="max-w-md text-white">
             <h1 className="text-4xl font-bold mb-6">
               Set Up {String(method).toUpperCase()} Verification
@@ -416,9 +496,9 @@ export default function TwoFactorSetupPage() {
                 <Button
                   onClick={handleSetup2FA}
                   className="w-full"
-                  disabled={isLoading || !verificationCode}
+                  disabled={state.isLoading || !verificationCode}
                 >
-                  {isLoading ? (
+                  {state.isLoading ? (
                     <>
                       <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                       Verifying...
@@ -432,7 +512,7 @@ export default function TwoFactorSetupPage() {
                   variant="outline"
                   onClick={handleSkip}
                   className="w-full"
-                  disabled={isLoading}
+                  disabled={state.isLoading}
                 >
                   Skip
                 </Button>
