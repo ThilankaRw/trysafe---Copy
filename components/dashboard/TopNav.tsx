@@ -12,7 +12,6 @@ export default function TopNav() {
       </div>
       <div className="flex items-center space-x-4">
         <UserMenu />
-        <ThemeToggle />
       </div>
     </nav>
   );

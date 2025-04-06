@@ -48,10 +48,6 @@ export function TwoFactorMethodSelection() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <RadioGroup name="method" className="space-y-4">
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="sms" id="sms" />
-              <Label htmlFor="sms">SMS</Label>
-            </div>
-            <div className="flex items-center space-x-2">
               <RadioGroupItem value="totp" id="totp" />
               <Label htmlFor="totp">Authenticator App (TOTP)</Label>
             </div>
