@@ -15,11 +15,14 @@ import {
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "../lib/auth-client";
+import { useSecureStorage } from "@/contexts/SecureStorageContext";
+import { generateSalt, deriveKey } from "@/lib/utils";
 
 export function CreateAccountForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { initializeStorage } = useSecureStorage();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,6 +34,11 @@ export function CreateAccountForm() {
     const password = formData.get("password") as string;
 
     try {
+      // Generate master key from password and salt
+      const salt = generateSalt();
+      const masterKey = await deriveKey(password, salt);
+
+      // Create account
       const { data, error } = await authClient.signUp.email({
         email: email,
         password: password,
@@ -38,24 +46,28 @@ export function CreateAccountForm() {
         image: "/404",
       });
 
-      console.log({
-        data,
-        error,
-      });
       if (error) {
         toast.error(error.message);
-        alert(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      // Initialize secure storage with master key
+      try {
+        await initializeStorage(password);
+      } catch (storageError) {
+        console.error("Failed to initialize secure storage:", storageError);
+        toast.error("Failed to initialize secure storage. Please try again.");
         setIsLoading(false);
         return;
       }
 
       toast.success("Account created successfully");
-      // redirect to setup 2fa
+
+      // Set up 2FA
       const res = await authClient.twoFactor.enable({
         password: password,
       });
-
-      console.log({ res });
 
       if (res.error) {
         toast.error(res.error.message);
@@ -63,7 +75,6 @@ export function CreateAccountForm() {
         return;
       }
 
-      toast.success("Login successful");
       router.push(
         "/security-onboarding?token=" +
           encodeURIComponent(btoa(res.data.totpURI))
@@ -71,7 +82,7 @@ export function CreateAccountForm() {
     } catch (error: any) {
       toast.error(error.message);
       setIsLoading(false);
-      console.log({
+      console.error({
         error,
       });
     }

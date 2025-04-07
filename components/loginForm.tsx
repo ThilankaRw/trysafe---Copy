@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -17,11 +19,13 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { authClient } from "../lib/auth-client";
+import { useSecureStorage } from "@/contexts/SecureStorageContext";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { secureStorage } = useSecureStorage();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,56 +35,42 @@ export function LoginForm() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    // // Simulate API call
-    // await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // if (email === "user@example.com" && password === "password") {
-    //   toast.success("Login successful");
-    //   router.push("/2fa-selection");
-    // } else {
-    //   toast.error("Invalid email or password");
-    // }
-
-    const { data, error } = await authClient.signIn.email(
-      {
+    try {
+      const result = await authClient.signIn.email({
         email,
         password,
         rememberMe: formData.get("remember") === "on",
-        // callbackURL: "/dashboard",
-      },
-      {
-        onSuccess: async (conext) => {
-          console.log({ conext });
-          if (conext.data.twoFactorRedirect) {
-            router.push("/2fa");
-            return;
-          }
+      });
 
-          // redirect to setup 2fa
-          const res = await authClient.twoFactor.enable({
-            password: password,
-          });
-
-          console.log({ res });
-
-          if (res.error) {
-            toast.error(res.error.message);
-            setIsLoading(false);
-            return;
-          }
-
-          toast.success("Login successful");
-          router.push(
-            "/security-onboarding?token=" +
-              encodeURIComponent(btoa(res.data.totpURI))
-          );
-        },
-        onError: (error) => {
-          toast.error(error.error.message);
-          setIsLoading(false);
-        },
+      if (result?.error) {
+        toast.error(result.error);
+        setIsLoading(false);
+        return;
       }
-    );
+
+      // After successful login, try to initialize or reinitialize storage
+      try {
+        if (secureStorage?.isInitialized) {
+          await secureStorage.reinitializeStorage(password);
+        } else {
+          await secureStorage?.initializeStorage(password);
+        }
+      } catch (error) {
+        console.error("Storage initialization failed:", error);
+        toast.error("Failed to initialize secure storage. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Only redirect after both login and storage initialization succeed
+      toast.success("Login successful");
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("An error occurred during login");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

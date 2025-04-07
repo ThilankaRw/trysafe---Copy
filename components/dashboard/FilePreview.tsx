@@ -1,22 +1,67 @@
+"use client"
+
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Download, Share, Trash } from "lucide-react"
+import { X, Download, Share } from "lucide-react"
+import { SecureFileStorage } from "@/lib/secure-storage"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 
 interface FilePreviewProps {
   file: {
-    name: string
-    type: string
-    url: string
+    id: string;
+    name: string;
+    type: string;
+    url?: string;
   }
   onClose: () => void
 }
 
 export default function FilePreview({ file, onClose }: FilePreviewProps) {
   const [isVisible, setIsVisible] = useState(true)
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const handleClose = () => {
     setIsVisible(false)
     setTimeout(onClose, 300) // Wait for exit animation to complete
+  }
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true)
+      setDownloadProgress(0)
+
+      // TODO: In production, use a proper key derivation from user's master key/password
+      const password = "temporary-password" // This should come from user's master key
+
+      const downloadedFile = await SecureFileStorage.downloadFile(
+        file.id,
+        password,
+        (progress) => {
+          setDownloadProgress(progress.percentage)
+        }
+      )
+
+      // Create download URL and trigger download
+      const downloadUrl = URL.createObjectURL(downloadedFile.data)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = downloadedFile.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(downloadUrl)
+
+      toast.success('File downloaded successfully')
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('Failed to download file')
+    } finally {
+      setIsDownloading(false)
+      setDownloadProgress(0)
+    }
   }
 
   return (
@@ -41,9 +86,10 @@ export default function FilePreview({ file, onClose }: FilePreviewProps) {
                 onClick={handleClose}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                <X />
+                <X className="w-6 h-6" />
               </button>
             </div>
+
             <div className="mb-4">
               {file.type.startsWith("image/") ? (
                 <img src={file.url || "/placeholder.svg"} alt={file.name} className="max-w-full h-auto rounded" />
@@ -51,35 +97,39 @@ export default function FilePreview({ file, onClose }: FilePreviewProps) {
                 <embed src={file.url} type="application/pdf" width="100%" height="500px" />
               ) : (
                 <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded">
-                  Preview not available for this file type.
+                  Preview not available for encrypted file.
                 </div>
               )}
             </div>
+
+            {isDownloading && (
+              <div className="mb-4">
+                <Progress value={downloadProgress} className="mb-2" />
+                <p className="text-sm text-gray-500 text-center">
+                  Downloading and decrypting: {Math.round(downloadProgress)}%
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end space-x-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toast.info('Sharing coming soon')}
+                disabled={isDownloading}
               >
                 <Share className="w-4 h-4 mr-2" />
                 Share
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleDownload}
+                disabled={isDownloading}
               >
-                <Trash className="w-4 h-4 mr-2" />
-                Delete
-              </motion.button>
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </Button>
             </div>
           </motion.div>
         </motion.div>
