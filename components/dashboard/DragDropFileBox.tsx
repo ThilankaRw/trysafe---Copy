@@ -6,17 +6,17 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Upload, File, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUpload } from "../../contexts/UploadContext"
-import { useSecureStorage } from "../../contexts/SecureStorageContext"
+import { useSecureStore } from "@/store/useSecureStore"
 import { toast } from "sonner"
 
 interface FileWithPreview extends File {
   preview: string
 }
 
-export default function DragDropFileBox() {
+export function DragDropFileBox() {
   const [files, setFiles] = useState<FileWithPreview[]>([])
   const { addUpload } = useUpload()
-  const { isInitialized, uploadFile } = useSecureStorage()
+  const { isInitialized, uploadFile } = useSecureStore()
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     // if (!isInitialized) {
@@ -38,25 +38,32 @@ export default function DragDropFileBox() {
         addUpload({
           id: uploadId,
           name: file.name,
+          size: file.size,
+          uploadedSize: 0,
           progress: 0,
           status: "uploading"
-        })
+        });
 
         await uploadFile(file, (progress) => {
+          const uploadedSize = Math.floor((progress / 100) * file.size);
           addUpload({
             id: uploadId,
             name: file.name,
+            size: file.size,
+            uploadedSize: uploadedSize,
             progress: Math.round(progress),
             status: "uploading"
-          })
-        })
+          });
+        });
 
         addUpload({
           id: uploadId,
           name: file.name,
+          size: file.size,
+          uploadedSize: file.size,
           progress: 100,
           status: "completed"
-        })
+        });
 
         toast.success(`${file.name} uploaded successfully`)
       } catch (error) {

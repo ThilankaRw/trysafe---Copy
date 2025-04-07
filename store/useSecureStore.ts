@@ -1,20 +1,17 @@
-'use client';
-
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { create } from 'zustand';
 import { KeyManager } from '@/lib/key-management';
 import { SecureFileStorage } from '@/lib/secure-storage';
-import { toast } from 'sonner';
 
-interface SecureStorageContextType {
+interface SecureStorageState {
   isInitialized: boolean;
-  initializeStorage: (masterPassword: string) => Promise<void>;
-  reinitializeStorage: (masterPassword: string) => Promise<void>;
+  masterPassword: string | null;
+  initAttempts: number;
+  initializeStorage: (password: string) => Promise<void>;
+  reinitializeStorage: (password: string) => Promise<void>;
   clearStorage: () => void;
   uploadFile: (file: File, onProgress?: (progress: number) => void) => Promise<string>;
   downloadFile: (fileId: string, onProgress?: (progress: number) => void) => Promise<Blob>;
 }
-
-const SecureStorageContext = createContext<SecureStorageContextType | null>(null);
 
 const STORAGE_STATE_KEY = 'secureStorageInitialized';
 const LAST_INIT_TIME_KEY = 'lastInitTime';
@@ -24,7 +21,6 @@ const getStorageState = () => {
   const isInit = window.localStorage.getItem(STORAGE_STATE_KEY) === 'true';
   const lastInitTime = parseInt(window.localStorage.getItem(LAST_INIT_TIME_KEY) || '0', 10);
   const now = Date.now();
-  // If it's been more than 24 hours since last init, consider storage uninitialized
   return isInit && (now - lastInitTime < 24 * 60 * 60 * 1000);
 };
 
@@ -39,72 +35,71 @@ const setStorageState = (initialized: boolean) => {
   }
 };
 
-export function SecureStorageProvider({ children }: { children: React.ReactNode }) {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [masterPassword, setMasterPassword] = useState<string | null>(null);
-  const keyManager = KeyManager.getInstance();
-  const [initAttempts, setInitAttempts] = useState(0);
+export const useSecureStore = create<SecureStorageState>((set, get) => ({
+  isInitialized: getStorageState(),
+  masterPassword: null,
+  initAttempts: 0,
 
-  // Check localStorage for previous initialization state
-  useEffect(() => {
-    const storedState = getStorageState();
-    if (storedState && keyManager.isInitialized()) {
-      setIsInitialized(true);
-    } else {
-      setStorageState(false);
-      setIsInitialized(false);
-    }
-  }, []);
-
-  const initializeStorage = useCallback(async (password: string) => {
+  initializeStorage: async (password: string) => {
+    const { isInitialized } = get();
     if (isInitialized) {
       console.warn('Storage is already initialized');
       return;
     }
-    
+
+
+    console.log('Initializing secure storage...');
     try {
+      const keyManager = KeyManager.getInstance();
       await keyManager.initialize(password);
-      setMasterPassword(password);
-      setIsInitialized(true);
+      set({
+        masterPassword: password,
+        isInitialized: true,
+        initAttempts: 0
+      });
       setStorageState(true);
-      setInitAttempts(0);
     } catch (error) {
-      setInitAttempts(prev => prev + 1);
+      set(state => ({ initAttempts: state.initAttempts + 1 }));
       console.error('Failed to initialize secure storage:', error);
-      setStorageState(false);
-      toast.error('Failed to initialize secure storage');
       throw error;
     }
-  }, [isInitialized]);
+  },
 
-  const reinitializeStorage = useCallback(async (password: string) => {
+  reinitializeStorage: async (password: string) => {
     try {
-      // Clear existing state first
+      const keyManager = KeyManager.getInstance();
       keyManager.clearKeys();
-      setMasterPassword(null);
-      setIsInitialized(false);
+      set({
+        masterPassword: null,
+        isInitialized: false
+      });
       setStorageState(false);
-      
-      // Then reinitialize
+
       await keyManager.initialize(password);
-      setMasterPassword(password);
-      setIsInitialized(true);
+      set({
+        masterPassword: password,
+        isInitialized: true,
+        initAttempts: 0
+      });
       setStorageState(true);
-      setInitAttempts(0);
     } catch (error) {
       console.error('Failed to reinitialize secure storage:', error);
       throw error;
     }
-  }, []);
+  },
 
-  const clearStorage = useCallback(() => {
+  clearStorage: () => {
+    const keyManager = KeyManager.getInstance();
     keyManager.clearKeys();
-    setMasterPassword(null);
-    setIsInitialized(false);
+    set({
+      masterPassword: null,
+      isInitialized: false
+    });
     setStorageState(false);
-  }, []);
+  },
 
-  const uploadFile = useCallback(async (file: File, onProgress?: (progress: number) => void) => {
+  uploadFile: async (file: File, onProgress?: (progress: number) => void) => {
+    const { isInitialized, masterPassword } = get();
     if (!isInitialized || !masterPassword) {
       throw new Error('Secure storage not initialized');
     }
@@ -121,9 +116,10 @@ export function SecureStorageProvider({ children }: { children: React.ReactNode 
       console.error('Upload error:', error);
       throw error;
     }
-  }, [isInitialized, masterPassword]);
+  },
 
-  const downloadFile = useCallback(async (fileId: string, onProgress?: (progress: number) => void) => {
+  downloadFile: async (fileId: string, onProgress?: (progress: number) => void) => {
+    const { isInitialized, masterPassword } = get();
     if (!isInitialized || !masterPassword) {
       throw new Error('Secure storage not initialized');
     }
@@ -139,28 +135,5 @@ export function SecureStorageProvider({ children }: { children: React.ReactNode 
       console.error('Download error:', error);
       throw error;
     }
-  }, [isInitialized, masterPassword]);
-
-  const value = {
-    isInitialized,
-    initializeStorage,
-    reinitializeStorage,
-    clearStorage,
-    uploadFile,
-    downloadFile,
-  };
-
-  return (
-    <SecureStorageContext.Provider value={value}>
-      {children}
-    </SecureStorageContext.Provider>
-  );
-}
-
-export function useSecureStorage() {
-  const context = useContext(SecureStorageContext);
-  if (!context) {
-    throw new Error('useSecureStorage must be used within a SecureStorageProvider');
   }
-  return context;
-}
+}));

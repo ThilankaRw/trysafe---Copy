@@ -15,14 +15,14 @@ import {
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "../lib/auth-client";
-import { useSecureStorage } from "@/contexts/SecureStorageContext";
+import { useSecureStore } from "@/store/useSecureStore";
 import { generateSalt, deriveKey } from "@/lib/utils";
 
 export function CreateAccountForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { initializeStorage } = useSecureStorage();
+  const { initializeStorage } = useSecureStore();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

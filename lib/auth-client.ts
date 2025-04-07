@@ -2,6 +2,7 @@ import { twoFactorClient } from "better-auth/plugins";
 import { passkeyClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 export const authClient = createAuthClient({
+  
   emailAndPassword: {
     enabled: true,
   },
@@ -15,5 +16,6 @@ export const authClient = createAuthClient({
       },
     }),
   ],
+
 });
 // Handle the 2FA verification globally

@@ -1,11 +1,24 @@
-import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { ThemeProvider } from "@/components/theme-provider";
-import { SecureStorageProvider } from "@/contexts/SecureStorageContext";
-import { UploadProvider } from "@/contexts/UploadContext";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
+import { UploadProvider } from "@/contexts/UploadContext";
+import "../styles/globals.css";
+import { useEffect } from "react";
+import { useSecureStore } from "@/store/useSecureStore";
 
 export default function App({ Component, pageProps }: AppProps) {
+
+    const { initializeStorage, reinitializeStorage, isInitialized } = useSecureStore();
+
+  useEffect(() => {
+    // if(!isInitialized){
+      initializeStorage("password")
+      console.log("Secure storage initialized",{
+        isInitialized
+      });
+    // }
+   
+  }, []);
   return (
     <ThemeProvider
       attribute="class"
@@ -13,12 +26,10 @@ export default function App({ Component, pageProps }: AppProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <SecureStorageProvider>
-        <UploadProvider>
-          <Component {...pageProps} />
-          <Toaster position="bottom-right" />
-        </UploadProvider>
-      </SecureStorageProvider>
+      <UploadProvider>
+        <Component {...pageProps} />
+        <Toaster richColors />
+      </UploadProvider>
     </ThemeProvider>
   );
 }

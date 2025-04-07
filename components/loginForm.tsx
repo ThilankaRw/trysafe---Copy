@@ -19,13 +19,13 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { authClient } from "../lib/auth-client";
-import { useSecureStorage } from "@/contexts/SecureStorageContext";
+import { useSecureStore } from "@/store/useSecureStore";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { secureStorage } = useSecureStorage();
+  const { initializeStorage, reinitializeStorage, isInitialized } = useSecureStore();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,17 +43,17 @@ export function LoginForm() {
       });
 
       if (result?.error) {
-        toast.error(result.error);
+        toast.error(result.error.message || 'Authentication failed');
         setIsLoading(false);
         return;
       }
 
       // After successful login, try to initialize or reinitialize storage
       try {
-        if (secureStorage?.isInitialized) {
-          await secureStorage.reinitializeStorage(password);
+        if (isInitialized) {
+          await reinitializeStorage(password);
         } else {
-          await secureStorage?.initializeStorage(password);
+          await initializeStorage(password);
         }
       } catch (error) {
         console.error("Storage initialization failed:", error);

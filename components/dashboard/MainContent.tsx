@@ -1,7 +1,7 @@
 import WelcomeMessage from "./WelcomeMessage"
 import SuggestedFiles from "./SuggestedFiles"
 import FileGrid from "./FileGrid"
-import DragDropFileBox from "./DragDropFileBox"
+import { DragDropFileBox } from "./DragDropFileBox"
 
 export default function MainContent() {
   return (
