@@ -1,128 +1,76 @@
-import { deriveKey, generateSalt, generateIV, arrayBufferToHex, hexToArrayBuffer, retryWithBackoff } from './utils';
+import {
+  deriveKey,
+  generateSalt,
+  generateIV,
+  arrayBufferToHex,
+  hexToArrayBuffer,
+  retryWithBackoff,
+} from "./utils";
+import { PassphraseEncryption } from "./passphrase-encryption";
 
-interface ChunkUploadInfo {
-  url: string;
-  checksum: string;
-  encryptionIV: string;
-}
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
-interface ChunkDownloadInfo {
-  url: string;
+interface ChunkMetadata {
+  iv: string;
   checksum: string;
-  encryptionIV: string;
   size: number;
 }
 
-export interface UploadProgress {
-  totalBytes: number;
-  uploadedBytes: number;
-  percentage: number;
+interface FileMetadata {
+  chunks: ChunkMetadata[];
+  originalSize: number;
+  mimeType: string;
+  name: string;
+  encryptionParams: {
+    salt: string;
+    iterations: number;
+    memCost: number;
+    parallelism: number;
+  };
 }
 
 export class SecureFileStorage {
-  private static async encryptChunk(chunk: ArrayBuffer, key: CryptoKey): Promise<{ encryptedData: ArrayBuffer; iv: string }> {
-    const iv = generateIV();
-    const webCrypto = typeof window !== 'undefined' ? window.crypto : require('crypto').webcrypto;
-    
-    const encryptedData = await webCrypto.subtle.encrypt(
-      {
-        name: 'AES-GCM',
-        iv,
-      },
-      key,
-      chunk
-    );
+  private encryption: PassphraseEncryption;
 
-    return {
-      encryptedData,
-      iv: arrayBufferToHex(iv.buffer as ArrayBuffer),
-    };
+  constructor() {
+    this.encryption = PassphraseEncryption.getInstance();
   }
 
-  private static async decryptChunk(encryptedChunk: ArrayBuffer, key: CryptoKey, iv: string): Promise<ArrayBuffer> {
-    const ivArray = new Uint8Array(hexToArrayBuffer(iv));
-    const webCrypto = typeof window !== 'undefined' ? window.crypto : require('crypto').webcrypto;
-    
-    return await webCrypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: ivArray,
-      },
-      key,
-      encryptedChunk
-    );
+  private async validateChunk(
+    chunk: ArrayBuffer,
+    checksum: string
+  ): Promise<boolean> {
+    const computedChecksum = await this.calculateChecksum(chunk);
+    return computedChecksum === checksum;
   }
 
-  private static async calculateChecksum(data: ArrayBuffer): Promise<string> {
-    const webCrypto = typeof window !== 'undefined' ? window.crypto : require('crypto').webcrypto;
-    const hashBuffer = await webCrypto.subtle.digest('SHA-256', data);
-    return arrayBufferToHex(hashBuffer);
-  }
-
-  private static async deriveEncryptionKey(password: string, salt: string): Promise<CryptoKey> {
-    const encoder = new TextEncoder();
-    const keyMaterial = await deriveKey(password, salt);
-
-    return await keyMaterial;
-  }
-
-  async uploadChunk(
-    chunk: Blob,
-    url: string,
-    onProgress: (progress: number) => void,
-    retryAttempt = 0
-  ): Promise<void> {
-    return retryWithBackoff(
-      async () => {
-        const xhr = new XMLHttpRequest();
-        
-        await new Promise<void>((resolve, reject) => {
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              onProgress(event.loaded / event.total * 100);
-            }
-          };
-
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              reject(new Error(`HTTP Error: ${xhr.status} ${xhr.statusText}`));
-            }
-          };
-
-          xhr.onerror = () => reject(new Error('Network error occurred'));
-          xhr.onabort = () => reject(new Error('Upload aborted'));
-
-          xhr.open('PUT', url);
-          xhr.send(chunk);
-        });
-      },
-      {
-        maxAttempts: 3,
-        initialDelay: 1000,
-        maxDelay: 5000,
-        onRetry: (error, attempt) => {
-          console.warn(`Upload retry attempt ${attempt} due to error:`, error);
-          onProgress(0); // Reset progress on retry
-        }
-      }
+  private static calculateProgressPercentage(
+    currentChunk: number,
+    totalChunks: number,
+    chunkProgress: number
+  ): number {
+    const chunkContribution = 100 / totalChunks;
+    return (
+      currentChunk * chunkContribution +
+      (chunkProgress * chunkContribution) / 100
     );
   }
 
   async uploadFile(
     file: File,
-    password: string,
+    passphrase: string,
     onProgress?: (progress: number) => void,
     onStatus?: (status: string) => void
   ): Promise<{ fileId: string; mimeType: string }> {
     let fileId: string | undefined;
-    
+
     try {
-      onStatus?.('initializing');
-      const initResponse = await fetch('/api/files/initialize-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      onStatus?.("initializing");
+
+      // Initialize upload and get signed URLs
+      const initResponse = await fetch("/api/files/initialize-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filename: file.name,
           mimeType: file.type,
@@ -131,171 +79,233 @@ export class SecureFileStorage {
       });
 
       if (!initResponse.ok) {
-        throw new Error('Failed to initialize upload');
+        throw new Error("Failed to initialize upload");
       }
 
-      const { fileId: newFileId, uploadUrls, keyDerivationSalt, chunkSize } = await initResponse.json();
+      const {
+        fileId: newFileId,
+        uploadUrls,
+        encryptionParams,
+      } = await initResponse.json();
       fileId = newFileId;
 
-      // Derive encryption key
-      const encryptionKey = await SecureFileStorage.deriveEncryptionKey(password, keyDerivationSalt);
+      // Initialize encryption with provided parameters
+      const isValid = await this.encryption.initializeEncryption(
+        passphrase,
+        encryptionParams
+      );
+      if (!isValid) {
+        throw new Error("Failed to initialize encryption");
+      }
+
       const totalChunks = uploadUrls.length;
       let uploadedChunks = 0;
-      let totalProgress = 0;
 
       // Process each chunk
       for (let i = 0; i < totalChunks; i++) {
-        const start = i * chunkSize;
-        const end = Math.min(start + chunkSize, file.size);
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
-        
-        // Generate unique IV for each chunk
-        const iv = generateIV();
-        const encryptedChunk = await SecureFileStorage.encryptChunk(await chunk.arrayBuffer(), encryptionKey);
-        
-        // Calculate chunk checksum
-        const checksum = await SecureFileStorage.calculateChecksum(encryptedChunk.encryptedData);
 
-        onStatus?.('uploading');
+        // Encrypt chunk
+        const encryptedChunk = await this.encryption.encryptChunk(
+          await chunk.arrayBuffer()
+        );
+
+        // Calculate chunk checksum
+        const checksum = await this.calculateChecksum(
+          encryptedChunk.encryptedData
+        );
+
+        onStatus?.("uploading");
+
+        // Upload encrypted chunk
         await this.uploadChunk(
           new Blob([encryptedChunk.encryptedData]),
           uploadUrls[i].url,
           (chunkProgress) => {
-            const chunkContribution = 100 / totalChunks;
-            totalProgress = (uploadedChunks * chunkContribution) + (chunkProgress * chunkContribution / 100);
+            const totalProgress = SecureFileStorage.calculateProgressPercentage(
+              uploadedChunks,
+              totalChunks,
+              chunkProgress
+            );
             onProgress?.(totalProgress);
           }
         );
 
-        // Mark chunk as complete
+        // Complete chunk upload
         await retryWithBackoff(
           async () => {
-            const completeResponse = await fetch('/api/files/complete-chunk', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+            const completeResponse = await fetch("/api/files/complete-chunk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                fileId,
                 chunkId: uploadUrls[i].chunkId,
                 checksum,
-                encryptionIV: encryptedChunk.iv,
+                iv: encryptedChunk.iv,
               }),
             });
 
             if (!completeResponse.ok) {
-              throw new Error('Failed to complete chunk upload');
+              throw new Error("Failed to complete chunk upload");
             }
           },
           {
             maxAttempts: 3,
             initialDelay: 1000,
             maxDelay: 5000,
-            onRetry: (error, attempt) => {
-              console.warn(`Upload retry attempt ${attempt} due to error:`, error);
-            }
           }
         );
 
         uploadedChunks++;
       }
 
-      onStatus?.('completed');
+      onStatus?.("completed");
       onProgress?.(100);
 
-      // Make sure fileId is defined before returning
-      if (!fileId) {
-        throw new Error('File ID was not set during upload');
-      }
-
-      return { fileId, mimeType: file.type };
+      return { fileId: fileId!, mimeType: file.type };
     } catch (error) {
-      onStatus?.('failed');
-      console.error('Upload failed:', error);
+      onStatus?.("failed");
+      console.error("Upload failed:", error);
 
-      // Cleanup failed upload
       if (fileId) {
         try {
-          await fetch('/api/files/cleanup-upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/files/cleanup-upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ fileId }),
           });
         } catch (cleanupError) {
-          console.error('Failed to cleanup failed upload:', cleanupError);
+          console.error("Failed to cleanup failed upload:", cleanupError);
         }
       }
 
       throw error;
+    } finally {
+      this.encryption.clearEncryption();
     }
   }
 
   static async downloadFile(
     fileId: string,
-    password: string,
-    onProgress?: (progress: UploadProgress) => void
+    passphrase: string,
+    onProgress?: (progress: {
+      totalBytes: number;
+      downloadedBytes: number;
+      percentage: number;
+    }) => void
   ): Promise<{ data: Blob; filename: string; mimeType: string }> {
+    const encryption = PassphraseEncryption.getInstance();
+    const storageInstance = new SecureFileStorage();
+
     try {
       // Get file metadata and download URLs
-      const prepareResponse = await fetch(`/api/files/prepare-download?fileId=${fileId}`);
-      if (!prepareResponse.ok) {
-        throw new Error('Failed to prepare download');
+      const metadataResponse = await fetch(`/api/files/${fileId}/metadata`);
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch file metadata");
       }
 
-      const {
-        filename,
-        mimeType,
-        originalSize,
-        keyDerivationSalt,
-        chunks,
-      } = await prepareResponse.json();
+      const metadata: FileMetadata = await metadataResponse.json();
 
-      // Derive decryption key
-      const decryptionKey = await this.deriveEncryptionKey(password, keyDerivationSalt);
-      const decryptedChunks: ArrayBuffer[] = [];
+      // Initialize encryption
+      const isValid = await encryption.initializeEncryption(
+        passphrase,
+        metadata.encryptionParams
+      );
+
+      if (!isValid) {
+        throw new Error("Invalid passphrase");
+      }
+
+      const chunks: ArrayBuffer[] = [];
       let downloadedBytes = 0;
 
       // Download and decrypt each chunk
-      for (const chunk of chunks) {
-        const response = await fetch(chunk.url);
+      for (let i = 0; i < metadata.chunks.length; i++) {
+        const chunk = metadata.chunks[i];
+
+        // Download encrypted chunk
+        const response = await fetch(`/api/files/${fileId}/chunks/${i}`);
+        if (!response.ok) {
+          throw new Error(`Failed to download chunk ${i}`);
+        }
+
         const encryptedData = await response.arrayBuffer();
 
-        // Verify chunk integrity
-        const checksum = await this.calculateChecksum(encryptedData);
-        if (checksum !== chunk.checksum) {
-          throw new Error('Chunk integrity check failed');
+        // Validate chunk integrity
+        if (
+          !(await storageInstance.validateChunk(encryptedData, chunk.checksum))
+        ) {
+          throw new Error(`Chunk ${i} integrity check failed`);
         }
 
         // Decrypt chunk
-        const decryptedChunk = await this.decryptChunk(
+        const decryptedChunk = await encryption.decryptChunk(
           encryptedData,
-          decryptionKey,
-          chunk.encryptionIV
+          chunk.iv
         );
+        chunks.push(decryptedChunk);
 
-        decryptedChunks.push(decryptedChunk);
         downloadedBytes += decryptedChunk.byteLength;
-
         onProgress?.({
-          totalBytes: originalSize,
-          uploadedBytes: downloadedBytes,
-          percentage: (downloadedBytes / originalSize) * 100,
+          totalBytes: metadata.originalSize,
+          downloadedBytes,
+          percentage: (downloadedBytes / metadata.originalSize) * 100,
         });
       }
 
-      // Combine chunks and create final blob
-      const combinedArray = new Uint8Array(originalSize);
+      // Combine chunks
+      const combinedArray = new Uint8Array(metadata.originalSize);
       let offset = 0;
-      for (const chunk of decryptedChunks) {
+
+      for (const chunk of chunks) {
         combinedArray.set(new Uint8Array(chunk), offset);
         offset += chunk.byteLength;
       }
 
       return {
-        data: new Blob([combinedArray], { type: mimeType }),
-        filename,
-        mimeType,
+        data: new Blob([combinedArray], { type: metadata.mimeType }),
+        filename: metadata.name,
+        mimeType: metadata.mimeType,
       };
-    } catch (error) {
-      console.error('Download error:', error);
-      throw error;
+    } finally {
+      encryption.clearEncryption();
     }
+  }
+
+  private async calculateChecksum(data: ArrayBuffer): Promise<string> {
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return arrayBufferToHex(hashBuffer);
+  }
+
+  private async uploadChunk(
+    chunk: Blob,
+    url: string,
+    onProgress: (progress: number) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress((event.loaded / event.total) * 100);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`HTTP Error: ${xhr.status} ${xhr.statusText}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error occurred"));
+      xhr.onabort = () => reject(new Error("Upload aborted"));
+
+      xhr.open("PUT", url);
+      xhr.send(chunk);
+    });
   }
 }

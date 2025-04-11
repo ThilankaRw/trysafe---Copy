@@ -1,121 +1,128 @@
 "use client"
 
 import { useState } from "react"
-import { FileIcon, FolderIcon, MoreHorizontal, Share2, Grid, List } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Card } from "../ui/card"
+import { FilePreview } from "./FilePreview"
+import { PassphrasePrompt } from "../secure-storage/PassphrasePrompt"
+import { toast } from "sonner"
 
-const files = [
-  { type: "folder", name: "Documents", modified: "2023-05-15", owner: "Me" },
-  { type: "file", name: "Report.pdf", modified: "2023-05-14", owner: "John Doe" },
-  { type: "file", name: "Presentation.pptx", modified: "2023-05-13", owner: "Me" },
-  { type: "folder", name: "Images", modified: "2023-05-12", owner: "Me" },
-  { type: "file", name: "Budget.xlsx", modified: "2023-05-11", owner: "Jane Smith" },
-]
+interface FileGridProps {
+  files: Array<{
+    id: string
+    name: string
+    mimeType: string
+    size: number
+    encrypted: boolean
+  }>
+  onFileDelete?: (fileId: string) => void
+}
 
-export default function FileGrid() {
-  const [view, setView] = useState<"grid" | "list">("grid")
+export function FileGrid({ files, onFileDelete }: FileGridProps) {
+  const [selectedFile, setSelectedFile] = useState<{
+    id: string
+    name: string
+    mimeType: string
+    encrypted: boolean
+  } | null>(null)
+  const [showPassphrasePrompt, setShowPassphrasePrompt] = useState(false)
+  const [encryptionParams, setEncryptionParams] = useState(null)
+  const [isDecrypting, setIsDecrypting] = useState(false)
+
+  const handleFileClick = async (file: typeof files[0]) => {
+    if (!file.encrypted) {
+      setSelectedFile(file)
+      return
+    }
+
+    try {
+      const response = await fetch("/api/auth/encryption-params")
+      if (!response.ok) {
+        throw new Error("Failed to fetch encryption parameters")
+      }
+
+      const params = await response.json()
+      setEncryptionParams(params)
+      setSelectedFile(file)
+      setShowPassphrasePrompt(true)
+    } catch (error) {
+      console.error("Failed to prepare file decryption:", error)
+      toast.error("Failed to prepare file decryption")
+    }
+  }
+
+  const handlePassphraseEntered = async (passphrase: string) => {
+    if (!selectedFile) return
+
+    setIsDecrypting(true)
+    try {
+      const response = await fetch(`/api/files/download/${selectedFile.id}`)
+      if (!response.ok) {
+        throw new Error("Failed to download file")
+      }
+
+      const fileData = await response.blob()
+      if (
+        selectedFile.mimeType.startsWith("image/") ||
+        selectedFile.mimeType === "application/pdf"
+      ) {
+        const url = URL.createObjectURL(fileData)
+        setSelectedFile({
+          ...selectedFile,
+          previewUrl: url,
+        })
+      } else {
+        const a = document.createElement("a")
+        a.href = URL.createObjectURL(fileData)
+        a.download = selectedFile.name
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      }
+    } catch (error) {
+      console.error("Decryption failed:", error)
+      toast.error("Failed to decrypt file")
+    } finally {
+      setIsDecrypting(false)
+      setShowPassphrasePrompt(false)
+    }
+  }
+
+  if (files.length === 0) {
+    return (
+      <div className="text-center p-8">
+        <p className="text-muted-foreground">No files found</p>
+      </div>
+    )
+  }
 
   return (
-    <section>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Files</h2>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setView("grid")}
-            className={view === "grid" ? "bg-gray-200 dark:bg-gray-700" : ""}
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+        {files.map((file) => (
+          <Card
+            key={file.id}
+            className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleFileClick(file)}
           >
-            <Grid className="h-4 w-4 mr-2" />
-            Grid
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setView("list")}
-            className={view === "list" ? "bg-gray-200 dark:bg-gray-700" : ""}
-          >
-            <List className="h-4 w-4 mr-2" />
-            List
-          </Button>
-        </div>
+            <FilePreview file={file} />
+          </Card>
+        ))}
       </div>
-      {view === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {files.map((file) => (
-            <FileCard key={file.name} file={file} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {files.map((file) => (
-            <FileRow key={file.name} file={file} />
-          ))}
-        </div>
+
+      {selectedFile && encryptionParams && (
+        <PassphrasePrompt
+          isOpen={showPassphrasePrompt}
+          onClose={() => {
+            setShowPassphrasePrompt(false)
+            setSelectedFile(null)
+          }}
+          onPassphraseEntered={handlePassphraseEntered}
+          encryptionParams={encryptionParams}
+          title={`Decrypt ${selectedFile.name}`}
+          description="Enter your encryption passphrase to access this file"
+        />
       )}
-    </section>
-  )
-}
-
-function FileCard({ file }) {
-  return (
-    <div className="p-4 bg-white dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm">
-      {file.type === "folder" ? (
-        <FolderIcon className="h-12 w-12 text-[rgb(31,111,130)] mx-auto mb-2" />
-      ) : (
-        <FileIcon className="h-12 w-12 text-[rgb(31,111,130)] mx-auto mb-2" />
-      )}
-      <p className="font-medium text-center truncate text-gray-700 dark:text-gray-300">{file.name}</p>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center">{file.modified}</p>
-      <div className="mt-2 flex justify-center space-x-2">
-        <Button variant="ghost" size="icon" className="hover:bg-gray-200 dark:hover:bg-gray-600">
-          <Share2 className="h-4 w-4" />
-        </Button>
-        <FileMenu />
-      </div>
-    </div>
-  )
-}
-
-function FileRow({ file }) {
-  return (
-    <div className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-      <div className="flex items-center space-x-4">
-        {file.type === "folder" ? (
-          <FolderIcon className="h-6 w-6 text-[rgb(31,111,130)]" />
-        ) : (
-          <FileIcon className="h-6 w-6 text-[rgb(31,111,130)]" />
-        )}
-        <span className="font-medium text-gray-700 dark:text-gray-300">{file.name}</span>
-      </div>
-      <div className="flex items-center space-x-4">
-        <span className="text-sm text-gray-500 dark:text-gray-400">{file.modified}</span>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{file.owner}</span>
-        <Button variant="ghost" size="icon" className="hover:bg-gray-200 dark:hover:bg-gray-600">
-          <Share2 className="h-4 w-4" />
-        </Button>
-        <FileMenu />
-      </div>
-    </div>
-  )
-}
-
-function FileMenu() {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="hover:bg-gray-200 dark:hover:bg-gray-600">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem>Download</DropdownMenuItem>
-        <DropdownMenuItem>Rename</DropdownMenuItem>
-        <DropdownMenuItem>Move</DropdownMenuItem>
-        <DropdownMenuItem className="text-red-600 dark:text-red-400">Delete</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    </>
   )
 }
 

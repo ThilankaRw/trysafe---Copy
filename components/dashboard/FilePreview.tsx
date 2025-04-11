@@ -1,140 +1,202 @@
-"use client"
-
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { X, Download, Share } from "lucide-react"
-import { SecureFileStorage } from "@/lib/secure-storage"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { useState } from 'react';
+import { Card } from '../ui/card';
+import { Button } from '../ui/button';
+import { PassphrasePrompt } from '../secure-storage/PassphrasePrompt';
+import { useEncryption } from '@/contexts/EncryptionContext';
+import { toast } from 'sonner';
+import { File as FileIcon, Download, Eye, Loader2, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '../ui/alert';
 
 interface FilePreviewProps {
   file: {
     id: string;
     name: string;
-    type: string;
-    url?: string;
-  }
-  onClose: () => void
+    mimeType: string;
+    encrypted: boolean;
+    previewUrl?: string;
+  };
+  onDelete?: () => void;
 }
 
-export default function FilePreview({ file, onClose }: FilePreviewProps) {
-  const [isVisible, setIsVisible] = useState(true)
-  const [downloadProgress, setDownloadProgress] = useState(0)
-  const [isDownloading, setIsDownloading] = useState(false)
+export function FilePreview({ file, onDelete }: FilePreviewProps) {
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [showPassphrasePrompt, setShowPassphrasePrompt] = useState(false);
+  const [encryptionParams, setEncryptionParams] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(file.previewUrl || null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleClose = () => {
-    setIsVisible(false)
-    setTimeout(onClose, 300) // Wait for exit animation to complete
-  }
+  const { initialize, clearEncryption } = useEncryption();
 
-  const handleDownload = async () => {
-    try {
-      setIsDownloading(true)
-      setDownloadProgress(0)
-
-      // TODO: In production, use a proper key derivation from user's master key/password
-      const password = "temporary-password" // This should come from user's master key
-
-      const downloadedFile = await SecureFileStorage.downloadFile(
-        file.id,
-        password,
-        (progress) => {
-          setDownloadProgress(progress.percentage)
-        }
-      )
-
-      // Create download URL and trigger download
-      const downloadUrl = URL.createObjectURL(downloadedFile.data)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = downloadedFile.filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(downloadUrl)
-
-      toast.success('File downloaded successfully')
-    } catch (error) {
-      console.error('Download error:', error)
-      toast.error('Failed to download file')
-    } finally {
-      setIsDownloading(false)
-      setDownloadProgress(0)
+  const handlePreviewClick = async () => {
+    if (!file.encrypted) {
+      // Handle unencrypted files directly
+      if (previewUrl) {
+        window.open(previewUrl, '_blank');
+      }
+      return;
     }
-  }
+
+    try {
+      const response = await fetch('/api/auth/encryption-params');
+      if (!response.ok) {
+        throw new Error('Failed to fetch encryption parameters');
+      }
+      
+      const params = await response.json();
+      setEncryptionParams(params);
+      setShowPassphrasePrompt(true);
+    } catch (error) {
+      console.error('Preview preparation error:', error);
+      setError('Failed to prepare file preview');
+      toast.error('Failed to prepare file preview');
+    }
+  };
+
+  const processPreview = async (passphrase: string) => {
+    if (!file || !encryptionParams) return;
+    
+    setIsDecrypting(true);
+    setError(null);
+
+    try {
+      // Initialize encryption
+      const isValid = await initialize(passphrase, encryptionParams);
+      if (!isValid) {
+        throw new Error('Invalid passphrase');
+      }
+
+      // Download and decrypt file
+      const response = await fetch(`/api/files/${file.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      if (file.mimeType.startsWith('image/') || file.mimeType === 'application/pdf') {
+        setPreviewUrl(url);
+      } else {
+        // Download other file types
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      clearEncryption();
+    } catch (error) {
+      console.error('Preview error:', error);
+      setError((error as Error).message || 'Failed to preview file');
+      toast.error('Failed to preview file');
+    } finally {
+      setIsDecrypting(false);
+      setShowPassphrasePrompt(false);
+    }
+  };
+
+  const getFileIcon = () => {
+    if (file.mimeType.startsWith('image/')) {
+      return previewUrl ? (
+        <img
+          src={previewUrl}
+          alt={file.name}
+          className="w-12 h-12 object-cover rounded"
+        />
+      ) : (
+        <FileIcon className="w-12 h-12 text-primary" />
+      );
+    }
+    return <FileIcon className="w-12 h-12 text-primary" />;
+  };
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ y: 20 }}
-            animate={{ y: 0 }}
-            exit={{ y: 20 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 max-w-2xl w-full mx-4 shadow-xl"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">{file.name}</h2>
-              <button
-                onClick={handleClose}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <X className="w-6 h-6" />
-              </button>
+    <>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {getFileIcon()}
+            <div>
+              <h3 className="font-medium">{file.name}</h3>
+              <p className="text-sm text-muted-foreground">
+                {file.encrypted ? 'Encrypted' : 'Not encrypted'}
+              </p>
             </div>
+          </div>
 
-            <div className="mb-4">
-              {file.type.startsWith("image/") ? (
-                <img src={file.url || "/placeholder.svg"} alt={file.name} className="max-w-full h-auto rounded" />
-              ) : file.type === "application/pdf" ? (
-                <embed src={file.url} type="application/pdf" width="100%" height="500px" />
-              ) : (
-                <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded">
-                  Preview not available for encrypted file.
-                </div>
-              )}
-            </div>
-
-            {isDownloading && (
-              <div className="mb-4">
-                <Progress value={downloadProgress} className="mb-2" />
-                <p className="text-sm text-gray-500 text-center">
-                  Downloading and decrypting: {Math.round(downloadProgress)}%
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-2">
+          <div className="flex gap-2">
+            {(file.mimeType.startsWith('image/') || file.mimeType === 'application/pdf') && (
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => toast.info('Sharing coming soon')}
-                disabled={isDownloading}
+                size="icon"
+                onClick={handlePreviewClick}
+                disabled={isDecrypting}
               >
-                <Share className="w-4 h-4 mr-2" />
-                Share
+                {isDecrypting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleDownload}
-                disabled={isDownloading}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-            </div>
-          </motion.div>
-        </motion.div>
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handlePreviewClick}
+              disabled={isDecrypting}
+            >
+              {isDecrypting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {error && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {previewUrl && (file.mimeType.startsWith('image/') || file.mimeType === 'application/pdf') && (
+          <div className="mt-4">
+            {file.mimeType.startsWith('image/') ? (
+              <img
+                src={previewUrl}
+                alt={file.name}
+                className="w-full rounded-lg"
+              />
+            ) : (
+              <iframe
+                src={previewUrl}
+                className="w-full h-[600px] rounded-lg"
+                title={file.name}
+              />
+            )}
+          </div>
+        )}
+      </Card>
+
+      {encryptionParams && (
+        <PassphrasePrompt
+          isOpen={showPassphrasePrompt}
+          onClose={() => {
+            setShowPassphrasePrompt(false);
+            setError(null);
+          }}
+          onPassphraseEntered={processPreview}
+          encryptionParams={encryptionParams}
+          title={`Access ${file.name}`}
+          description="Enter your encryption passphrase to access this file."
+        />
       )}
-    </AnimatePresence>
-  )
+    </>
+  );
 }
 

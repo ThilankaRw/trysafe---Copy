@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, type ReactMouseEvent } from "react"
+import { useState, type MouseEvent } from "react"
 import { motion } from "framer-motion"
 import { Folder, File, ChevronRight } from "lucide-react"
-import FilePreview from "./FilePreview"
+import {FilePreview} from "./FilePreview"
 import ShareModal from "./ShareModal"
 
 const dummyFiles = [
@@ -31,7 +31,7 @@ export default function FileExplorer({ currentFolder, setCurrentFolder }: FileEx
   const [selectedFile, setSelectedFile] = useState(null)
   const [shareFile, setShareFile] = useState(null)
 
-  const handleContextMenu = (e: ReactMouseEvent, item: any) => {
+  const handleContextMenu = (e: MouseEvent, item: any) => {
     e.preventDefault()
     setContextMenu({
       x: e.clientX,
@@ -44,11 +44,11 @@ export default function FileExplorer({ currentFolder, setCurrentFolder }: FileEx
     setContextMenu(null)
   }
 
-  const handleFileClick = (file) => {
+  const handleFileClick = (file:any) => {
     setSelectedFile(file)
   }
 
-  const handleShareClick = (file) => {
+  const handleShareClick = (file:any) => {
     setShareFile(file)
   }
 

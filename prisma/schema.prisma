@@ -1,73 +1,144 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-generator client {
-  provider = "prisma-client-js"
-}
 
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
-model user {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  email         String    @unique
-  name          String?
-  emailVerified Boolean
-  image         String?
-  createdAt     DateTime
-  updatedAt     DateTime
-  sessions      session[]
-  accounts      account[]
-  files         file[]
-  passkeys      passkey[]
-  twoFactorEnabled Boolean?
-  twofactors    twoFactor[]
-  masterKeyHash String?   // Hashed version of the master key
-
-  @@map("user")
+generator client {
+  provider = "prisma-client-js"
 }
 
-model session {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  expiresAt DateTime
-  token     String
-  createdAt DateTime
-  updatedAt DateTime
-  ipAddress String?
-  userAgent String?
-  userId    String   @db.ObjectId
-  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
-  @@unique([token])
-  @@map("session")
-}
+  user User @relation(fields: [userId], references: [id])
 
-model account {
-  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
   accountId             String
   providerId            String
-  userId                String    @db.ObjectId
-  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
   accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
-  scope                 String?
   password              String?
   createdAt             DateTime
   updatedAt             DateTime
 
+  @@unique([provider, providerAccountId])
   @@map("account")
 }
 
-model verification {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+  expiresAt    DateTime
+  token        String
+  createdAt    DateTime
+  updatedAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+
+  @@unique([token])
+  @@map("session")
+}
+
+model User {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  name             String?
+  email            String?     @unique
+  emailVerified    Boolean?
+  image            String?
+  encryptionSalt   String?
+  encryptionParams Json?
+  verifierHash     String?
+  verifierSalt     String?
+  hasSetPassphrase Boolean     @default(false)
+  hasPassphrase    Boolean     @default(false)
+  lastEncryptionAt DateTime?
+  accounts         Account[]
+  sessions         Session[]
+  files            File[]
+  fileShares       FileShare[]
+  twoFactorSecret  String?
+  twoFactorMethod  String?
+  createdAt        DateTime
+  updatedAt        DateTime
+  twoFactorEnabled Boolean?
+  passkeys         Passkey[]
+  twofactors       TwoFactor[]
+
+  @@map("user")
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model File {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  mimeType       String
+  size           Int
+  encrypted      Boolean     @default(true)
+  uploadedAt     DateTime    @default(now())
+  lastAccessedAt DateTime?
+  ownerId        String
+  owner          User        @relation(fields: [ownerId], references: [id])
+  chunks         FileChunk[]
+  shares         FileShare[]
+  totalChunks    Int
+  isComplete     Boolean     @default(false)
+}
+
+model FileChunk {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  fileId     String
+  file       File     @relation(fields: [fileId], references: [id])
+  index      Int
+  size       Int
+  iv         String
+  checksum   String
+  url        String
+  uploadedAt DateTime @default(now())
+
+  @@unique([fileId, index])
+  @@index([fileId])
+}
+
+model FileShare {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  fileId         String
+  file           File      @relation(fields: [fileId], references: [id])
+  createdById    String
+  createdBy      User      @relation(fields: [createdById], references: [id])
+  recipientEmail String
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  lastAccessedAt DateTime?
+  accessCount    Int       @default(0)
+}
+
+model Verification {
+  id         String    @id @map("_id")
   identifier String
   value      String
   expiresAt  DateTime
@@ -77,12 +148,12 @@ model verification {
   @@map("verification")
 }
 
-model passkey {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+model Passkey {
+  id           String    @id @map("_id")
   name         String?
   publicKey    String
-  userId       String    @db.ObjectId
-  user         user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   credentialID String
   counter      Int
   deviceType   String
@@ -93,49 +164,12 @@ model passkey {
   @@map("passkey")
 }
 
-model twoFactor {
-  id          String @id @map("_id") @db.ObjectId  @default(auto())
+model TwoFactor {
+  id          String @id @map("_id")
   secret      String
   backupCodes String
-  userId      String @db.ObjectId
-  user        user   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("twoFactor")
-}
-
-model file {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
-  originalSize    Int
-  mimeType        String
-  category        String   // Small, Medium, Large
-  chunkSize       Int
-  totalChunks     Int
-  userId          String   @db.ObjectId
-  user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  uploadedAt      DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  chunks          chunk[]
-  parentFolderId  String?  @db.ObjectId
-  parentFolder    file?    @relation("FileHierarchy", fields: [parentFolderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  childFiles      file[]   @relation("FileHierarchy")
-  isFolder        Boolean  @default(false)
-  keyDerivationSalt String // For client-side encryption key derivation
-  
-  @@map("files")
-}
-
-model chunk {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  fileId      String   @db.ObjectId
-  file        file     @relation(fields: [fileId], references: [id], onDelete: Cascade)
-  s3Key       String   @unique // UUID used as S3 object key
-  chunkOrder  Int
-  size        Int
-  checksum    String   // For integrity verification
-  uploadedAt  DateTime @default(now())
-  encryptionIV String  // Initialization Vector for client-side encryption
-  
-  @@unique([fileId, chunkOrder])
-  @@map("chunks")
 }

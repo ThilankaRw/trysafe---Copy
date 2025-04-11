@@ -11,6 +11,7 @@ export default function TopNav() {
         <SearchBar />
       </div>
       <div className="flex items-center space-x-4">
+        <ThemeToggle />
         <UserMenu />
       </div>
     </nav>

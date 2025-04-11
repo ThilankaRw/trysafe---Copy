@@ -1,5 +1,6 @@
 import Dashboard from "@/components/dashboard/Dashboard";
 import { ThemeProvider } from "@/components/theme-provider";
+import { UploadProvider } from "../contexts/UploadContext";
 
 export default function DashboardPage() {
   return (
@@ -9,7 +10,9 @@ export default function DashboardPage() {
       enableSystem={true}
       forcedTheme="dark"
     >
-      <Dashboard />
+      <UploadProvider>
+        <Dashboard />
+      </UploadProvider>
     </ThemeProvider>
   );
 }
