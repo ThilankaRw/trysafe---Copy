@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, type ReactMouseEvent } from "react"
-import { motion } from "framer-motion"
-import { Folder, File, ChevronRight } from "lucide-react"
-import FilePreview from "./FilePreview"
-import ShareModal from "./ShareModal"
+import { useState, type MouseEvent } from "react";
+import { motion } from "framer-motion";
+import { Folder, File, ChevronRight } from "lucide-react";
+import FilePreview from "./FilePreview";
+import ShareModal from "./ShareModal";
 
 const dummyFiles = [
   {
@@ -18,42 +18,54 @@ const dummyFiles = [
   { name: "Images", type: "folder" },
   { name: "report.pdf", type: "file" },
   { name: "presentation.pptx", type: "file" },
-]
+];
 
 interface FileExplorerProps {
-  currentFolder: string
-  setCurrentFolder: (folder: string) => void
+  currentFolder: string;
+  setCurrentFolder: (folder: string) => void;
 }
 
-export default function FileExplorer({ currentFolder, setCurrentFolder }: FileExplorerProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null)
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [shareFile, setShareFile] = useState(null)
+export default function FileExplorer({
+  currentFolder,
+  setCurrentFolder,
+}: FileExplorerProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    item: any;
+  } | null>(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [shareFile, setShareFile] = useState(null);
 
-  const handleContextMenu = (e: ReactMouseEvent, item: any) => {
-    e.preventDefault()
+  const handleContextMenu = (e: MouseEvent, item: any) => {
+    e.preventDefault();
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
       item,
-    })
-  }
+    });
+  };
 
   const closeContextMenu = () => {
-    setContextMenu(null)
-  }
+    setContextMenu(null);
+  };
 
-  const handleFileClick = (file) => {
-    setSelectedFile(file)
-  }
+  const handleFileClick = (file: any) => {
+    setSelectedFile(file);
+  };
 
-  const handleShareClick = (file) => {
-    setShareFile(file)
-  }
+  const handleShareClick = (file: any) => {
+    setShareFile(file);
+  };
 
   const renderTree = (items: any[]) => (
-    <motion.ul className="pl-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+    <motion.ul
+      className="pl-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {items.map((item) => (
         <motion.li
           key={item.name}
@@ -63,7 +75,11 @@ export default function FileExplorer({ currentFolder, setCurrentFolder }: FileEx
         >
           <button
             className="flex items-center hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded w-full text-left group"
-            onClick={() => (item.type === "folder" ? setCurrentFolder(item.name) : handleFileClick(item))}
+            onClick={() =>
+              item.type === "folder"
+                ? setCurrentFolder(item.name)
+                : handleFileClick(item)
+            }
             onContextMenu={(e) => handleContextMenu(e, item)}
           >
             {item.type === "folder" ? (
@@ -77,7 +93,10 @@ export default function FileExplorer({ currentFolder, setCurrentFolder }: FileEx
             )}
           </button>
           {item.type === "file" && (
-            <button className="ml-2 text-sm text-blue-500 hover:text-blue-600" onClick={() => handleShareClick(item)}>
+            <button
+              className="ml-2 text-sm text-blue-500 hover:text-blue-600"
+              onClick={() => handleShareClick(item)}
+            >
               Share
             </button>
           )}
@@ -85,7 +104,7 @@ export default function FileExplorer({ currentFolder, setCurrentFolder }: FileEx
         </motion.li>
       ))}
     </motion.ul>
-  )
+  );
 
   return (
     <aside className="w-64 bg-white/30 dark:bg-gray-800/30 backdrop-blur-md p-4 overflow-auto border-r border-gray-200 dark:border-gray-700">
@@ -97,19 +116,34 @@ export default function FileExplorer({ currentFolder, setCurrentFolder }: FileEx
         {renderTree(dummyFiles)}
       </nav>
       {contextMenu && (
-        <ContextMenu x={contextMenu.x} y={contextMenu.y} item={contextMenu.item} onClose={closeContextMenu} />
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          item={contextMenu.item}
+          onClose={closeContextMenu}
+        />
       )}
-      {selectedFile && <FilePreview file={selectedFile} onClose={() => setSelectedFile(null)} />}
-      {shareFile && <ShareModal fileName={shareFile.name} onClose={() => setShareFile(null)} />}
+      {selectedFile && (
+        <FilePreview
+          file={selectedFile}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
+      {shareFile && (
+        <ShareModal
+          fileName={(shareFile as any).name}
+          onClose={() => setShareFile(null)}
+        />
+      )}
     </aside>
-  )
+  );
 }
 
 interface ContextMenuProps {
-  x: number
-  y: number
-  item: any
-  onClose: () => void
+  x: number;
+  y: number;
+  item: any;
+  onClose: () => void;
 }
 
 function ContextMenu({ x, y, item, onClose }: ContextMenuProps) {
@@ -118,7 +152,7 @@ function ContextMenu({ x, y, item, onClose }: ContextMenuProps) {
     { label: "Delete", action: () => console.log("Delete", item.name) },
     { label: "Download", action: () => console.log("Download", item.name) },
     { label: "Share", action: () => console.log("Share", item.name) },
-  ]
+  ];
 
   return (
     <motion.div
@@ -134,8 +168,8 @@ function ContextMenu({ x, y, item, onClose }: ContextMenuProps) {
           key={index}
           className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors duration-150"
           onClick={() => {
-            menuItem.action()
-            onClose()
+            menuItem.action();
+            onClose();
           }}
           whileHover={{ x: 5 }}
         >
@@ -143,6 +177,5 @@ function ContextMenu({ x, y, item, onClose }: ContextMenuProps) {
         </motion.button>
       ))}
     </motion.div>
-  )
+  );
 }
-

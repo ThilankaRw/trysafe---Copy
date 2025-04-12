@@ -1,7 +1,7 @@
-import TopNav from "./TopNav"
-import Sidebar from "./Sidebar"
-import MainContent from "./MainContent"
-import Footer from "./Footer"
+import TopNav from "./TopNav";
+import Sidebar from "./Sidebar";
+import MainContent from "./MainContent";
+import Footer from "./Footer";
 
 export default function Dashboard() {
   return (
@@ -13,6 +13,5 @@ export default function Dashboard() {
         <Footer />
       </div>
     </div>
-  )
+  );
 }
-

@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ThemeToggle } from "../../ThemeToggle";
+import ThemeToggle from "../../ThemeToggle";
 
 interface TopNavProps {
   onMenuClick: () => void;
