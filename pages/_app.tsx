@@ -10,8 +10,12 @@ import { PasswordDialog } from "@/components/dashboard/passwordDialog";
 
 export default function App({ Component, pageProps }: AppProps) {
   const { data: session } = authClient.useSession();
-  const { isInitialized, initializeStorage, reinitializeStorage } =
-    useSecureStore();
+  const {
+    isInitialized,
+    initializeStorage,
+    reinitializeStorage,
+    masterPassword,
+  } = useSecureStore();
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   useEffect(() => {
@@ -19,7 +23,7 @@ export default function App({ Component, pageProps }: AppProps) {
     console.log("Is Initialized:", isInitialized);
     if (session) {
       // Check if the session is valid and the user is authenticated
-      if (!isInitialized) {
+      if (!isInitialized || !masterPassword) {
         setShowPasswordDialog(true);
         console.log("Session is valid, but storage is not initialized.");
       } else {
