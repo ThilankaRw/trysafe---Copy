@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import React from "react";
 
 const files = [
   { type: "folder", name: "Documents", modified: "2023-05-15", owner: "Me" },
@@ -40,7 +41,14 @@ const files = [
   },
 ];
 
-export default function FileGrid() {
+// Define props for FileGrid
+interface FileGridProps {
+  files: FileData[];
+  onFileDelete: (fileId: string) => void;
+}
+
+// Explicitly type the component with React.FC
+const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
   const [view, setView] = useState<"grid" | "list">("grid");
 
   return (
@@ -85,7 +93,9 @@ export default function FileGrid() {
       )}
     </section>
   );
-}
+};
+
+export default FileGrid;
 
 function FileCard({
   file,
