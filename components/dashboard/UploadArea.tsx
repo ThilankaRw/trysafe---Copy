@@ -1,65 +1,71 @@
-"use client"
+"use client";
 
-import { useState, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useDropzone } from "react-dropzone"
-import { Upload, Plus, X } from "lucide-react"
-import { useUpload } from "@/contexts/UploadContext"
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useDropzone } from "react-dropzone";
+import { Upload, Plus, X } from "lucide-react";
+import { useUpload } from "@/contexts/UploadContext";
 
 interface UploadAreaProps {
-  currentFolder: string
+  currentFolder: string;
 }
 
 export default function UploadArea({ currentFolder }: UploadAreaProps) {
-  const { addUpload } = useUpload()
-  const [isDragging, setIsDragging] = useState(false)
-  const [showFilePicker, setShowFilePicker] = useState(false)
+  const { addUpload } = useUpload();
+  const [isDragging, setIsDragging] = useState(false);
+  const [showFilePicker, setShowFilePicker] = useState(false);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       acceptedFiles.forEach((file) => {
         addUpload({
-          id: Date.now(),
+          id: Date.now().toString(),
           name: file.name,
           progress: 0,
           status: "uploading",
-        })
+          size: file.size,
+          uploadedSize: 0,
+        });
         // Simulate upload progress
-        let progress = 0
+        let progress = 0;
         const interval = setInterval(() => {
-          progress += 10
+          progress += 10;
           if (progress > 100) {
-            clearInterval(interval)
+            clearInterval(interval);
             addUpload({
-              id: Date.now(),
+              id: Date.now().toString(),
               name: file.name,
               progress: 100,
               status: "completed",
-            })
+              size: file.size,
+              uploadedSize: file.size,
+            });
           } else {
             addUpload({
-              id: Date.now(),
+              id: Date.now().toString(),
               name: file.name,
               progress,
               status: "uploading",
-            })
+              size: file.size,
+              uploadedSize: (file.size * progress) / 100,
+            });
           }
-        }, 500)
-      })
+        }, 500);
+      });
     },
-    [addUpload],
-  )
+    [addUpload]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     onDragEnter: () => setIsDragging(true),
     onDragLeave: () => setIsDragging(false),
-  })
+  });
 
   return (
     <>
       <motion.div
-        {...getRootProps()}
+        {...(getRootProps() as any)}
         className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 ${
           isDragging
             ? "border-primary bg-primary/10 scale-105"
@@ -76,8 +82,12 @@ export default function UploadArea({ currentFolder }: UploadAreaProps) {
           transition={{ type: "spring", stiffness: 300 }}
         >
           <Upload className="mx-auto w-16 h-16 text-primary filter drop-shadow-glow" />
-          <p className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">Drag and drop files here</p>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">or click to select files</p>
+          <p className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
+            Drag and drop files here
+          </p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            or click to select files
+          </p>
         </motion.div>
       </motion.div>
 
@@ -106,7 +116,9 @@ export default function UploadArea({ currentFolder }: UploadAreaProps) {
               className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-full relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-lg font-semibold mb-4">Select Files to Upload</h2>
+              <h2 className="text-lg font-semibold mb-4">
+                Select Files to Upload
+              </h2>
               <input
                 type="file"
                 multiple
@@ -123,6 +135,5 @@ export default function UploadArea({ currentFolder }: UploadAreaProps) {
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }
-

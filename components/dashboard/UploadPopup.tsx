@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { X, Pause, Play, Trash2 } from "lucide-react"
-import { useUpload } from "@/contexts/UploadContext"
+import { X, Pause, Play, Trash2 } from "lucide-react";
+import { useUpload } from "@/contexts/UploadContext";
 
-export default function UploadPopup({ onClose }) {
-  const { uploads, removeUpload } = useUpload()
+export default function UploadPopup({ onClose }: { onClose: () => void }) {
+  const { uploads, removeUpload } = useUpload();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -31,7 +31,11 @@ export default function UploadPopup({ onClose }) {
                 </div>
               </div>
               <button className="ml-2">
-                {upload.status === "paused" ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                {upload.status === "paused" ? (
+                  <Play className="w-5 h-5" />
+                ) : (
+                  <Pause className="w-5 h-5" />
+                )}
               </button>
               <button className="ml-2" onClick={() => removeUpload(upload.id)}>
                 <Trash2 className="w-5 h-5" />
@@ -41,6 +45,5 @@ export default function UploadPopup({ onClose }) {
         </ul>
       </div>
     </div>
-  )
+  );
 }
-

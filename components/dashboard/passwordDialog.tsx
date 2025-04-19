@@ -43,7 +43,9 @@ export function PasswordDialog({
     <Dialog open={isOpen} onOpenChange={() => {}}>
       <DialogContent
         className="sm:max-w-[425px]"
-        onPointerDownOutside={(e: React.PointerEvent) => e.preventDefault()}
+        onPointerDownOutside={(event) =>
+          event.detail.originalEvent.preventDefault()
+        }
         onEscapeKeyDown={(e: KeyboardEvent) => e.preventDefault()}
       >
         <DialogHeader>

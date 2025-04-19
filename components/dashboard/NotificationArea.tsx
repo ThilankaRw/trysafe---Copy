@@ -1,52 +1,67 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle, AlertCircle, X } from "lucide-react"
-import { useUpload } from "@/contexts/UploadContext"
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle, AlertCircle, X } from "lucide-react";
+import { useUpload } from "@/contexts/UploadContext";
 
 export default function NotificationArea() {
-  const { uploads } = useUpload()
-  const [notifications, setNotifications] = useState([])
+  const { uploads } = useUpload();
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    const newNotifications = uploads.filter((upload) => upload.status === "completed" || upload.status === "failed")
-    setNotifications((prev) => [...prev, ...newNotifications])
+    const newNotifications = uploads.filter(
+      (upload) => upload.status === "completed" || upload.status === "failed"
+    );
+    setNotifications((prev) => [...prev, ...newNotifications]);
 
     const timer = setTimeout(() => {
-      setNotifications((prev) => prev.slice(1))
-    }, 5000)
+      setNotifications((prev) => prev.slice(1));
+    }, 5000);
 
-    return () => clearTimeout(timer)
-  }, [uploads])
+    return () => clearTimeout(timer);
+  }, [uploads]);
 
   return (
     <div className="fixed bottom-4 right-4 space-y-2 z-50">
       <AnimatePresence>
         {notifications.map((notification) => (
-          <Notification key={notification.id} notification={notification} setNotifications={setNotifications} />
+          <Notification
+            key={notification.id}
+            notification={notification}
+            setNotifications={setNotifications}
+          />
         ))}
       </AnimatePresence>
     </div>
-  )
+  );
 }
 
-function Notification({ notification, setNotifications }) {
-  const [progress, setProgress] = useState(100)
+interface NotificationProps {
+  notification: {
+    id: string;
+    name: string;
+    status: "completed" | "failed";
+  };
+  setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+function Notification({ notification, setNotifications }: NotificationProps) {
+  const [progress, setProgress] = useState(100);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev <= 0) {
-          clearInterval(timer)
-          return 0
+          clearInterval(timer);
+          return 0;
         }
-        return prev - 1
-      })
-    }, 50)
+        return prev - 1;
+      });
+    }, 50);
 
-    return () => clearInterval(timer)
-  }, [])
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <motion.div
@@ -68,13 +83,19 @@ function Notification({ notification, setNotifications }) {
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => setNotifications((prev) => prev.filter((n) => n.id !== notification.id))}
+        onClick={() =>
+          setNotifications((prev) =>
+            prev.filter((n) => n.id !== notification.id)
+          )
+        }
         className="ml-2"
       >
         <X className="w-4 h-4" />
       </motion.button>
-      <div className="absolute bottom-0 left-0 h-1 bg-white/20 rounded-full" style={{ width: `${progress}%` }} />
+      <div
+        className="absolute bottom-0 left-0 h-1 bg-white/20 rounded-full"
+        style={{ width: `${progress}%` }}
+      />
     </motion.div>
-  )
+  );
 }
-

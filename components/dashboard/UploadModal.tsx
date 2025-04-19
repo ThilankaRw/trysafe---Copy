@@ -1,11 +1,16 @@
-"use client"
+"use client";
 
-import { motion, AnimatePresence } from "framer-motion"
-import { X, Pause, Play, Trash2 } from "lucide-react"
-import { useUpload } from "@/contexts/UploadContext"
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Pause, Play, Trash2 } from "lucide-react";
+import { useUpload } from "@/contexts/UploadContext";
 
-export default function UploadModal({ isOpen, onClose }) {
-  const { uploads, removeUpload } = useUpload()
+interface UploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
+  const { uploads, removeUpload } = useUpload();
 
   return (
     <AnimatePresence>
@@ -24,7 +29,11 @@ export default function UploadModal({ isOpen, onClose }) {
           >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Ongoing Uploads</h2>
-              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={onClose}>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={onClose}
+              >
                 <X className="w-5 h-5" />
               </motion.button>
             </div>
@@ -40,7 +49,9 @@ export default function UploadModal({ isOpen, onClose }) {
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
                       <span className="text-sm font-medium">{upload.name}</span>
-                      <span className="text-sm text-gray-500">{upload.progress}%</span>
+                      <span className="text-sm text-gray-500">
+                        {upload.progress}%
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden">
                       <motion.div
@@ -56,7 +67,11 @@ export default function UploadModal({ isOpen, onClose }) {
                     whileTap={{ scale: 0.9 }}
                     className="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                   >
-                    {upload.status === "paused" ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                    {upload.status === "paused" ? (
+                      <Play className="w-5 h-5" />
+                    ) : (
+                      <Pause className="w-5 h-5" />
+                    )}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -73,6 +88,5 @@ export default function UploadModal({ isOpen, onClose }) {
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }
-
