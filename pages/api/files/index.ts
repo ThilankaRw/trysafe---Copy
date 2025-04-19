@@ -95,7 +95,6 @@ export default async function handler(
       uploadedAt: file.uploadedAt,
       isFolder: file.isFolder,
       parentFolderId: file.parentFolderId,
-      encrypted: true,
     }));
 
     console.log(
