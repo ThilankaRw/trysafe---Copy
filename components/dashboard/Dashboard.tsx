@@ -8,13 +8,13 @@ import { useState, useEffect } from "react";
 // -------------------------------------------------------------------
 
 import { useSecureStore } from "@/store/useSecureStore";
-import { PassphrasePrompt } from "@/components/secure-storage/PassphrasePrompt";
 import { toast } from "sonner";
 import TopNav from "./TopNav";
 import Sidebar from "./Sidebar";
 import MainContent from "./MainContent";
 import Footer from "./Footer";
 import { Skeleton } from "@/components/ui/skeleton"; // For loading state
+import { PassphrasePrompt } from "../secure-storage/PassphrasePrompt";
 
 // Define a type for the file data (adjust based on your actual API response)
 type FileData = {

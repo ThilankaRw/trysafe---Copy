@@ -26,12 +26,7 @@ import Link from "next/link";
 
 export default function CloudStorageLanding() {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      enableSystem={true}
-      forcedTheme="light"
-    >
+    <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
       <LandingPageContent />
     </ThemeProvider>
   );

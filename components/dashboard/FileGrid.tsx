@@ -17,29 +17,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import React from "react";
+import { toast } from "sonner";
 
-const files = [
-  { type: "folder", name: "Documents", modified: "2023-05-15", owner: "Me" },
-  {
-    type: "file",
-    name: "Report.pdf",
-    modified: "2023-05-14",
-    owner: "John Doe",
-  },
-  {
-    type: "file",
-    name: "Presentation.pptx",
-    modified: "2023-05-13",
-    owner: "Me",
-  },
-  { type: "folder", name: "Images", modified: "2023-05-12", owner: "Me" },
-  {
-    type: "file",
-    name: "Budget.xlsx",
-    modified: "2023-05-11",
-    owner: "Jane Smith",
-  },
-];
+// Define the type for the file data (should match Dashboard.tsx)
+type FileData = {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  encrypted: boolean;
+};
 
 // Define props for FileGrid
 interface FileGridProps {
@@ -51,6 +38,36 @@ interface FileGridProps {
 const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
   const [view, setView] = useState<"grid" | "list">("grid");
 
+  // Function to handle deletion from the menu
+  const handleDelete = async (fileId: string, fileName: string) => {
+    // Optional: Add a confirmation dialog here
+    try {
+      // Call the API to delete the file
+      const response = await fetch(`/api/files/${fileId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete file");
+      }
+      // Call the callback to update the parent state
+      onFileDelete(fileId);
+      toast.success(`File "${fileName}" deleted successfully.`);
+    } catch (error: any) {
+      console.error("Error deleting file:", error);
+      toast.error(`Failed to delete file: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  // Display message if no files are present (using the prop)
+  if (files.length === 0) {
+    return (
+      <div className="text-center p-8 mt-6">
+        <p className="text-muted-foreground">No files uploaded yet.</p>
+      </div>
+    );
+  }
+
   return (
     <section>
       <div className="flex justify-between items-center mb-4">
@@ -58,6 +75,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
           Files
         </h2>
         <div className="space-x-2">
+          {/* View toggle buttons */}
           <Button
             variant="outline"
             size="sm"
@@ -80,14 +98,16 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
       </div>
       {view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* Use the files PROP here */}
           {files.map((file) => (
-            <FileCard key={file.name} file={file} />
+            <FileCard key={file.id} file={file} onDelete={handleDelete} />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
+          {/* Use the files PROP here */}
           {files.map((file) => (
-            <FileRow key={file.name} file={file} />
+            <FileRow key={file.id} file={file} onDelete={handleDelete} />
           ))}
         </div>
       )}
@@ -97,14 +117,18 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
 
 export default FileGrid;
 
-function FileCard({
-  file,
-}: {
-  file: { type: string; name: string; modified: string; owner: string };
-}) {
+// --- FileCard Component ---
+interface FileCardProps {
+  file: FileData;
+  onDelete: (fileId: string, fileName: string) => void;
+}
+
+function FileCard({ file, onDelete }: FileCardProps) {
+  const isFolder = file.mimeType === "application/vnd.trysafe.folder"; // Example folder mime type
+
   return (
     <div className="p-4 bg-white dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm">
-      {file.type === "folder" ? (
+      {isFolder ? (
         <FolderIcon className="h-12 w-12 text-[rgb(31,111,130)] mx-auto mb-2" />
       ) : (
         <FileIcon className="h-12 w-12 text-[rgb(31,111,130)] mx-auto mb-2" />
@@ -113,60 +137,72 @@ function FileCard({
         {file.name}
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-        {file.modified}
+        {formatBytes(file.size)}
       </p>
       <div className="mt-2 flex justify-center space-x-2">
         <Button
           variant="ghost"
           size="icon"
           className="hover:bg-gray-200 dark:hover:bg-gray-600"
+          onClick={() => toast.info("Sharing not implemented yet.")}
         >
           <Share2 className="h-4 w-4" />
         </Button>
-        <FileMenu />
+        {/* Pass props to FileMenu */}
+        <FileMenu fileId={file.id} fileName={file.name} onDelete={onDelete} />
       </div>
     </div>
   );
 }
 
-function FileRow({
-  file,
-}: {
-  file: { type: string; name: string; modified: string; owner: string };
-}) {
+// --- FileRow Component ---
+interface FileRowProps {
+  file: FileData;
+  onDelete: (fileId: string, fileName: string) => void;
+}
+
+function FileRow({ file, onDelete }: FileRowProps) {
+  const isFolder = file.mimeType === "application/vnd.trysafe.folder";
+
   return (
     <div className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-      <div className="flex items-center space-x-4">
-        {file.type === "folder" ? (
-          <FolderIcon className="h-6 w-6 text-[rgb(31,111,130)]" />
+      <div className="flex items-center space-x-4 flex-1 min-w-0">
+        {isFolder ? (
+          <FolderIcon className="h-6 w-6 text-[rgb(31,111,130)] flex-shrink-0" />
         ) : (
-          <FileIcon className="h-6 w-6 text-[rgb(31,111,130)]" />
+          <FileIcon className="h-6 w-6 text-[rgb(31,111,130)] flex-shrink-0" />
         )}
-        <span className="font-medium text-gray-700 dark:text-gray-300">
+        <span className="font-medium text-gray-700 dark:text-gray-300 truncate">
           {file.name}
         </span>
       </div>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 flex-shrink-0">
         <span className="text-sm text-gray-500 dark:text-gray-400">
-          {file.modified}
-        </span>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {file.owner}
+          {formatBytes(file.size)}
         </span>
         <Button
           variant="ghost"
           size="icon"
           className="hover:bg-gray-200 dark:hover:bg-gray-600"
+          onClick={() => toast.info("Sharing not implemented yet.")}
         >
           <Share2 className="h-4 w-4" />
         </Button>
-        <FileMenu />
+        {/* Pass props to FileMenu */}
+        <FileMenu fileId={file.id} fileName={file.name} onDelete={onDelete} />
       </div>
     </div>
   );
 }
 
-function FileMenu() {
+// --- FileMenu Component ---
+interface FileMenuProps {
+  fileId: string;
+  fileName: string;
+  onDelete: (fileId: string, fileName: string) => void;
+}
+
+function FileMenu({ fileId, fileName, onDelete }: FileMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -179,13 +215,38 @@ function FileMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem>Download</DropdownMenuItem>
-        <DropdownMenuItem>Rename</DropdownMenuItem>
-        <DropdownMenuItem>Move</DropdownMenuItem>
-        <DropdownMenuItem className="text-red-600 dark:text-red-400">
+        <DropdownMenuItem
+          onClick={() => toast.info("Download not implemented yet.")}
+        >
+          Download
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => toast.info("Rename not implemented yet.")}
+        >
+          Rename
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => toast.info("Move not implemented yet.")}
+        >
+          Move
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-100 dark:focus:text-red-300 dark:focus:bg-red-900/50"
+          onClick={() => onDelete(fileId, fileName)} // Use the onDelete prop
+        >
           Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+// --- Helper Function ---
+function formatBytes(bytes: number, decimals = 2): string {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
