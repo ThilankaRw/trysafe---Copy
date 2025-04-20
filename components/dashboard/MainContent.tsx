@@ -2,7 +2,7 @@ import WelcomeMessage from "./WelcomeMessage";
 import FileGrid from "./FileGrid";
 import { DragDropFileBox } from "./DragDropFileBox";
 import { Skeleton } from "@/components/ui/skeleton";
-import UploadCornerWindow from "./UploadCornerWindow";
+import TransferPanel from "./TransferPanel";
 
 // Define the type for the file data (should match Dashboard.tsx)
 type FileData = {
@@ -42,8 +42,8 @@ export default function MainContent({
         <FileGrid files={files} onFileDelete={onFileDelete} />
       )}
 
-      {/* Upload Corner Window - appears automatically when uploads are present */}
-      <UploadCornerWindow />
+      {/* Transfer notification panel */}
+      <TransferPanel />
     </main>
   );
 }

@@ -15,6 +15,11 @@ import MainContent from "./MainContent";
 import Footer from "./Footer";
 import { Skeleton } from "@/components/ui/skeleton"; // For loading state
 import { PassphrasePrompt } from "../secure-storage/PassphrasePrompt";
+import UploadPopup from "./UploadPopup";
+import { useUpload } from "@/contexts/UploadContext";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
+import TransferPanel from "./TransferPanel";
 
 // Define a type for the file data (adjust based on your actual API response)
 type FileData = {
@@ -37,6 +42,8 @@ export default function Dashboard() {
   const [isLoadingFiles, setIsLoadingFiles] = useState(true); // Renamed for clarity
   const [showReinitPrompt, setShowReinitPrompt] = useState(false);
   const [isReinitializing, setIsReinitializing] = useState(false);
+  const [showUploadPopup, setShowUploadPopup] = useState(false);
+  const { uploads } = useUpload();
 
   // Effect to check if re-initialization prompt is needed
   useEffect(() => {
@@ -138,7 +145,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background text-foreground flex">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <TopNav />
+        <TopNav onShowUploads={() => setShowUploadPopup(true)} />
         {/* Render MainContent only if initialized, otherwise show placeholder/loader */}
         {isAuthenticated && isInitialized ? (
           <MainContent
@@ -171,6 +178,14 @@ export default function Dashboard() {
         description="Please enter your master passphrase to access your encrypted data for this session."
         // encryptionParams not needed for re-initialization
       />
+
+      {/* Upload Popup */}
+      {showUploadPopup && (
+        <UploadPopup onClose={() => setShowUploadPopup(false)} />
+      )}
+
+      {/* Transfer Panel for upload/download indicators */}
+      <TransferPanel />
     </div>
   );
 }

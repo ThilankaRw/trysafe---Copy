@@ -4,8 +4,14 @@ import UserMenu from "./UserMenu";
 import ThemeToggle from "../ThemeToggle";
 import { PasswordDialog } from "./passwordDialog";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 
-export default function TopNav() {
+interface TopNavProps {
+  onShowUploads?: () => void;
+}
+
+export default function TopNav({ onShowUploads }: TopNavProps) {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   const handlePasswordSubmit = (password: string) => {
@@ -24,6 +30,16 @@ export default function TopNav() {
         <SearchBar />
       </div>
       <div className="flex items-center space-x-4">
+        {onShowUploads && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onShowUploads}
+            title="Show uploads"
+          >
+            <Upload className="h-5 w-5" />
+          </Button>
+        )}
         <ThemeToggle />
         <UserMenu />
       </div>
