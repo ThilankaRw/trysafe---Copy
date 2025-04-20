@@ -15,7 +15,7 @@ interface FileWithPreview extends File {
 
 export function DragDropFileBox() {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
-  const { addUpload } = useUpload();
+  const { addUpload, updateUpload } = useUpload();
   const { isInitialized, uploadFile } = useSecureStore();
 
   const onDrop = useCallback(
@@ -35,7 +35,10 @@ export function DragDropFileBox() {
       // Process each file for secure upload
       for (const file of acceptedFiles) {
         try {
-          const uploadId = Date.now().toString(); // Temporary ID for progress tracking
+          // Create a unique ID for this upload
+          const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+          // Initial upload entry
           addUpload({
             id: uploadId,
             name: file.name,
@@ -45,28 +48,34 @@ export function DragDropFileBox() {
             status: "uploading",
           });
 
+          // Handle upload with progress callback
           await uploadFile(file, (progress) => {
             const uploadedSize = Math.floor((progress / 100) * file.size);
-            addUpload({
-              id: uploadId,
-              name: file.name,
-              size: file.size,
+            // Update existing upload instead of adding a new one
+            updateUpload(uploadId, {
               uploadedSize: uploadedSize,
               progress: Math.round(progress),
-              status: "uploading",
+              status: progress < 100 ? "uploading" : "encrypting",
             });
           });
 
-          addUpload({
-            id: uploadId,
-            name: file.name,
-            size: file.size,
+          // Mark as completed
+          updateUpload(uploadId, {
             uploadedSize: file.size,
             progress: 100,
             status: "completed",
           });
 
           toast.success(`${file.name} uploaded successfully`);
+
+          // Remove from the dropzone preview after successful upload
+          const newFiles = [...files];
+          const uploadedFile = newFiles.find((f) => f.name === file.name);
+          if (uploadedFile) {
+            newFiles.splice(newFiles.indexOf(uploadedFile), 1);
+            setFiles(newFiles);
+            URL.revokeObjectURL(uploadedFile.preview);
+          }
         } catch (error) {
           console.error("Upload error:", error);
           toast.error(`Failed to upload ${file.name}`);
@@ -82,7 +91,7 @@ export function DragDropFileBox() {
         }
       }
     },
-    [addUpload, uploadFile, isInitialized, files]
+    [addUpload, updateUpload, uploadFile, isInitialized, files]
   );
 
   const removeFile = (file: FileWithPreview) => {
