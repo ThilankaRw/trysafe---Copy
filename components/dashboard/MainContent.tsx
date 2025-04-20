@@ -1,5 +1,4 @@
 import WelcomeMessage from "./WelcomeMessage";
-import SuggestedFiles from "./SuggestedFiles";
 import FileGrid from "./FileGrid";
 import { DragDropFileBox } from "./DragDropFileBox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,7 +29,6 @@ export default function MainContent({
     <main className="flex-1 p-6 overflow-auto bg-gray-50 dark:bg-gray-900">
       <WelcomeMessage />
       <DragDropFileBox />
-      <SuggestedFiles />
 
       {/* Handle loading state and pass props to FileGrid */}
       {isLoading ? (
