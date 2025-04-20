@@ -8,6 +8,7 @@ import {
   Share2,
   Grid,
   List,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import React from "react";
 import { toast } from "sonner";
+import { FileDownloadButton } from "./FileDownloadButton";
 
 // Define the type for the file data (should match Dashboard.tsx)
 type FileData = {
@@ -140,6 +142,13 @@ function FileCard({ file, onDelete }: FileCardProps) {
         {formatBytes(file.size)}
       </p>
       <div className="mt-2 flex justify-center space-x-2">
+        <FileDownloadButton
+          fileId={file.id}
+          fileName={file.name}
+          variant="ghost"
+          size="icon"
+          className="hover:bg-gray-200 dark:hover:bg-gray-600"
+        />
         <Button
           variant="ghost"
           size="icon"
@@ -180,6 +189,13 @@ function FileRow({ file, onDelete }: FileRowProps) {
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {formatBytes(file.size)}
         </span>
+        <FileDownloadButton
+          fileId={file.id}
+          fileName={file.name}
+          variant="ghost"
+          size="icon"
+          className="hover:bg-gray-200 dark:hover:bg-gray-600"
+        />
         <Button
           variant="ghost"
           size="icon"
@@ -215,10 +231,17 @@ function FileMenu({ fileId, fileName, onDelete }: FileMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onClick={() => toast.info("Download not implemented yet.")}
-        >
-          Download
+        <DropdownMenuItem asChild>
+          <FileDownloadButton
+            fileId={fileId}
+            fileName={fileName}
+            variant="ghost"
+            size="default"
+            className="w-full justify-start px-2"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download
+          </FileDownloadButton>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => toast.info("Rename not implemented yet.")}

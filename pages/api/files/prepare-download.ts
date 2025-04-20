@@ -26,15 +26,18 @@ export default async function handler(
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const sessionCookie = req.cookies["ba.session-token"];
-    if (!sessionCookie) {
-      return res.status(401).json({ error: "Unauthorized" });
+    const headers = new Headers();
+    if (req.headers.cookie) {
+      headers.set("cookie", req.headers.cookie);
     }
 
-    const session = await prisma.session.findUnique({
-      where: { token: sessionCookie },
-      include: { user: true },
+    const session = await auth.api.getSession({
+      headers,
     });
+
+    if (!session || !session.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
     if (!session || !session.user) {
       return res.status(401).json({ error: "Unauthorized" });

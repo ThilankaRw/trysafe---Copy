@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { KeyManager } from "@/lib/key-management";
-import { SecureFileStorage } from "@/lib/secure-storage";
+import { SecureFileStorage, UploadProgress } from "@/lib/secure-storage";
 
 interface SecureStorageState {
   isInitialized: boolean;
@@ -15,7 +15,7 @@ interface SecureStorageState {
   ) => Promise<string>;
   downloadFile: (
     fileId: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: UploadProgress) => void
   ) => Promise<Blob>;
 }
 
@@ -132,7 +132,7 @@ export const useSecureStore = create<SecureStorageState>((set, get) => ({
 
   downloadFile: async (
     fileId: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: UploadProgress) => void
   ) => {
     const { isInitialized, masterPassword } = get();
     if (!isInitialized || !masterPassword) {
@@ -143,7 +143,7 @@ export const useSecureStore = create<SecureStorageState>((set, get) => ({
       const { data } = await SecureFileStorage.downloadFile(
         fileId,
         masterPassword,
-        (progress) => onProgress?.(progress.percentage)
+        onProgress
       );
       return data;
     } catch (error) {

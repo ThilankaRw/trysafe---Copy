@@ -9,6 +9,7 @@ import {
   FileText,
   UploadCloud,
   ArrowLeft,
+  Download,
 } from "lucide-react";
 import { useUpload } from "@/contexts/UploadContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -108,7 +109,7 @@ export default function UploadCornerWindow() {
           <UploadCloud className="w-5 h-5 text-[rgb(31,111,130)]" />
           <span className="font-medium text-sm">
             {activeUploads.length > 0
-              ? `${activeUploads.length} active uploads`
+              ? `${activeUploads.length} active ${getActiveStatusLabel(activeUploads)}`
               : `${completedUploads.length} completed uploads`}
           </span>
           <Maximize2 className="w-4 h-4" />
@@ -135,8 +136,14 @@ export default function UploadCornerWindow() {
             </>
           ) : (
             <>
-              <UploadCloud className="w-5 h-5 text-[rgb(31,111,130)]" />
-              <h3 className="font-medium">Uploading Files</h3>
+              {hasDownloads(activeUploads) ? (
+                <Download className="w-5 h-5 text-blue-500" />
+              ) : (
+                <UploadCloud className="w-5 h-5 text-[rgb(31,111,130)]" />
+              )}
+              <h3 className="font-medium">
+                {getActiveStatusLabel(activeUploads)}
+              </h3>
               <span className="bg-gray-100 dark:bg-gray-700 text-xs px-2 py-1 rounded-full">
                 {activeUploads.length}
               </span>
@@ -226,9 +233,7 @@ export default function UploadCornerWindow() {
                 </div>
                 <div className="flex justify-between mb-1">
                   <span className="text-xs text-gray-500">
-                    {upload.status === "encrypting"
-                      ? "Encrypting..."
-                      : `${upload.progress}%`}
+                    {getStatusLabel(upload.status, upload.progress)}
                   </span>
                   <span className="text-xs">
                     {formatFileSize(upload.uploadedSize || 0)} /{" "}
@@ -285,4 +290,39 @@ function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+// Helper function to get status label
+function getStatusLabel(status: string, progress: number): string {
+  switch (status) {
+    case "uploading":
+      return `Uploading... ${progress}%`;
+    case "downloading":
+      return `Downloading... ${progress}%`;
+    case "encrypting":
+      return "Processing...";
+    case "processing":
+      return "Preparing...";
+    case "paused":
+      return "Paused";
+    case "completed":
+      return "Completed";
+    case "failed":
+      return "Failed";
+    default:
+      return `${status} ${progress}%`;
+  }
+}
+
+// Helper function to check if there are downloads
+function hasDownloads(uploads: any[]): boolean {
+  return uploads.some((u) => u.status === "downloading");
+}
+
+// Helper function to get a label for active operations
+function getActiveStatusLabel(uploads: any[]): string {
+  if (uploads.some((u) => u.status === "downloading")) {
+    return "downloads";
+  }
+  return "uploads";
 }
