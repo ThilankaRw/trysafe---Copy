@@ -42,16 +42,26 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
 
   // Function to handle deletion from the menu
   const handleDelete = async (fileId: string, fileName: string) => {
-    // Optional: Add a confirmation dialog here
+    // Add a confirmation dialog
+    if (
+      !confirm(
+        `Are you sure you want to delete "${fileName}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
     try {
       // Call the API to delete the file
-      const response = await fetch(`/api/files/${fileId}`, {
+      const response = await fetch(`/api/files/delete?fileId=${fileId}`, {
         method: "DELETE",
       });
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || "Failed to delete file");
       }
+
       // Call the callback to update the parent state
       onFileDelete(fileId);
       toast.success(`File "${fileName}" deleted successfully.`);
@@ -219,6 +229,19 @@ interface FileMenuProps {
 }
 
 function FileMenu({ fileId, fileName, onDelete }: FileMenuProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = async () => {
+    if (isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      await onDelete(fileId, fileName);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -255,9 +278,10 @@ function FileMenu({ fileId, fileName, onDelete }: FileMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuItem
           className="text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-100 dark:focus:text-red-300 dark:focus:bg-red-900/50"
-          onClick={() => onDelete(fileId, fileName)} // Use the onDelete prop
+          onClick={handleDeleteClick}
+          disabled={isDeleting}
         >
-          Delete
+          {isDeleting ? "Deleting..." : "Delete"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

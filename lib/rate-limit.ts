@@ -49,3 +49,9 @@ export const chunkLimiter = rateLimiter({
   max: 200, // 200 chunk operations per minute
   message: "Too many chunk operations, please try again in 1 minute",
 });
+
+export const deleteLimiter = rateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // 20 deletions per 5 minutes
+  message: "Too many deletion attempts, please try again in 5 minutes",
+});
