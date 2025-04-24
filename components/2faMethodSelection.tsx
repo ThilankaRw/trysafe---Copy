@@ -10,6 +10,7 @@ import {
 } from "../components/ui/card";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
+import { authClient } from "@/lib/auth-client";
 
 export function TwoFactorMethodSelection() {
   const [isLoading, setIsLoading] = useState(false);
