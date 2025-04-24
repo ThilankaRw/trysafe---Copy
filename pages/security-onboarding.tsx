@@ -27,14 +27,16 @@ export default function SecurityOnboardingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // get secet from query params
-    const secret = router.query.token as string;
-    console.log({ secret });
-    if (!secret) {
-      setDisableTotp(true);
-      setSelectedMethod("email");
-    } else setDisableTotp(false);
-  }, [router.query.secret]);
+    if (router.query.token) {
+      // get secet from query params
+      const secret = router.query.token as string;
+      console.log({ secret });
+      if (!secret) {
+        setDisableTotp(true);
+        setSelectedMethod("email");
+      } else setDisableTotp(false);
+    }
+  }, [router.query.token]);
 
   const handleSetup2FA = async () => {
     const secret = router.query.token as string;

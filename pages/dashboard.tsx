@@ -3,12 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 export default function DashboardPage() {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem={true}
-      forcedTheme="dark"
-    >
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
       <Dashboard />
     </ThemeProvider>
   );
