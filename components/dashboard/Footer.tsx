@@ -1,10 +1,12 @@
-import Link from "next/link"
+import Link from "next/link";
 
 export default function Footer() {
   return (
     <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-4">
       <div className="container mx-auto flex justify-between items-center px-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">&copy; 2023 Trisafe. All rights reserved.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          &copy; 2025 Trisafe. All rights reserved.
+        </p>
         <nav>
           <ul className="flex space-x-4">
             <li>
@@ -35,6 +37,5 @@ export default function Footer() {
         </nav>
       </div>
     </footer>
-  )
+  );
 }
-
