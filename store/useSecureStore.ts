@@ -22,17 +22,6 @@ interface SecureStorageState {
 const STORAGE_STATE_KEY = "secureStorageInitialized";
 const LAST_INIT_TIME_KEY = "lastInitTime";
 
-const getStorageState = () => {
-  if (typeof window === "undefined") return false;
-  const isInit = window.localStorage.getItem(STORAGE_STATE_KEY) === "true";
-  const lastInitTime = parseInt(
-    window.localStorage.getItem(LAST_INIT_TIME_KEY) || "0",
-    10
-  );
-  const now = Date.now();
-  return isInit && now - lastInitTime < 24 * 60 * 60 * 1000;
-};
-
 const setStorageState = (initialized: boolean) => {
   if (typeof window === "undefined") return;
   if (initialized) {
@@ -45,7 +34,7 @@ const setStorageState = (initialized: boolean) => {
 };
 
 export const useSecureStore = create<SecureStorageState>((set, get) => ({
-  isInitialized: getStorageState(),
+  isInitialized: false,
   masterPassword: null,
   initAttempts: 0,
 
@@ -62,7 +51,7 @@ export const useSecureStore = create<SecureStorageState>((set, get) => ({
       await keyManager.initialize(password);
       set({
         masterPassword: password,
-        isInitialized: true,
+        isInitialized: false,
         initAttempts: 0,
       });
       setStorageState(true);

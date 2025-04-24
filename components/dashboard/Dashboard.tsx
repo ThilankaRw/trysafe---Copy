@@ -45,7 +45,10 @@ export default function Dashboard() {
   const [showUploadPopup, setShowUploadPopup] = useState(false);
   const { uploads } = useUpload();
 
-  // Effect to check if re-initialization prompt is needed
+  console.log({
+    isInitialized,
+  });
+
   useEffect(() => {
     console.log(
       `[Dashboard] Reinit check: isAuthLoading=${isAuthLoading}, isAuthenticated=${isAuthenticated}, isInitialized=${isInitialized}`
@@ -59,11 +62,8 @@ export default function Dashboard() {
       );
       setShowReinitPrompt(true);
     } else if (!isAuthenticated) {
-      // Handle case where user is somehow not authenticated but on dashboard?
-      // Maybe redirect to login?
       console.warn("[Dashboard] User is not authenticated.");
     } else if (isAuthenticated && isInitialized) {
-      // Already initialized, prompt shouldn't be shown
       setShowReinitPrompt(false);
     }
   }, [isAuthenticated, isAuthLoading, isInitialized]);

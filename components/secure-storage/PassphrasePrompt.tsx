@@ -91,15 +91,10 @@ export function PassphrasePrompt({
             onKeyDown={handleKeyDown}
             placeholder="Enter your passphrase"
             disabled={isProcessing}
-            autoFocus // Automatically focus the input when the dialog opens
+            autoFocus
           />
         </div>
         <DialogFooter>
-          {/* Allow cancelling, but it will trigger the onClose handler */}
-          {/* Consider if Cancel should be disabled during processing */}
-          <Button variant="outline" onClick={onClose} disabled={isProcessing}>
-            Cancel
-          </Button>
           <Button onClick={handleSubmit} disabled={isProcessing || !passphrase}>
             {isProcessing ? (
               <>
@@ -115,6 +110,3 @@ export function PassphrasePrompt({
     </Dialog>
   );
 }
-
-// Add a default export if needed elsewhere, though named export is fine for direct use
-// export default PassphrasePrompt;
