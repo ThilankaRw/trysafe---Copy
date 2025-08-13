@@ -28,6 +28,12 @@ model user {
   twoFactorEnabled Boolean?
   twofactors    twoFactor[]
   masterKeyHash String?   // Hashed version of the master key
+    // Server-side encryption fields
+  serverSecret     String?   // Encrypted server-side secret for chunk protection
+  serverSecretIv   String?   // IV for server secret encryption
+  serverSecretAuthTag String? // Authentication tag for server secret encryption
+  secretCreatedAt  DateTime? // When the server secret was first created
+  secretRotatedAt  DateTime? // Last time the server secret was rotated
 
   @@map("user")
 }
@@ -136,6 +142,11 @@ model chunk {
   checksum    String   // For integrity verification
   uploadedAt  DateTime @default(now())
   encryptionIV String  // Initialization Vector for client-side encryption
+  
+  // Server-side encryption fields
+  serverIV        String?  // IV for server-side encryption layer
+  serverAuthTag   String?  // Authentication tag for server-side encryption
+  serverEncrypted Boolean  @default(false) // Whether chunk has server-side encryption applied
   
   @@unique([fileId, chunkOrder])
   @@map("chunks")

@@ -25,6 +25,7 @@ interface UploadState {
   error?: string;
   startTime?: number;
   estimatedTimeRemaining?: number;
+  type?: "upload" | "download";
 }
 
 interface UploadContextType {

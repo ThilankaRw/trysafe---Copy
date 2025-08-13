@@ -333,7 +333,6 @@ export default function TransferPanel() {
                   </div>
                 </div>
               )}
-
               {/* Show downloads section if any exist */}
               {activeDownloads.length > 0 && (
                 <div className="p-1.5">
@@ -358,7 +357,6 @@ export default function TransferPanel() {
                   </div>
                 </div>
               )}
-
               {/* Error transfers */}
               {errorTransfers.length > 0 && (
                 <div className="p-1.5">
@@ -393,14 +391,18 @@ export default function TransferPanel() {
                   </div>
                 </div>
               )}
-
-              {/* Completed transfers */}
+              {/* Completed transfers */}{" "}
               {completedTransfers.length > 0 && (
                 <div className="p-1.5">
                   <div className="flex items-center space-x-1.5 mb-1 px-1">
                     <CheckCircle className="w-3 h-3 text-green-500" />
                     <span className="text-[10px] uppercase tracking-wider font-semibold text-green-500/80">
-                      Completed
+                      {completedTransfers.some(
+                        (t) =>
+                          t.type === "download" || t.status === "downloading"
+                      )
+                        ? "Downloads"
+                        : "Uploads"}
                     </span>
                   </div>
                   <div className="space-y-1">
@@ -428,7 +430,6 @@ export default function TransferPanel() {
                   </div>
                 </div>
               )}
-
               {/* No transfers message */}
               {uploads.length === 0 && (
                 <div className="py-6 text-center text-gray-500 text-sm">
@@ -521,14 +522,16 @@ function TransferItem({
   };
 
   // Get status text
-  const getStatusText = () => {
-    if (isError) return "Failed";
-    if (isComplete) return "Complete";
-    if (isEncrypting) return "Encrypting...";
-    if (isProcessing) return "Processing...";
+  function getStatusText() {
+    if (isError) return actualIsDownload ? "Download Failed" : "Upload Failed";
+    if (isComplete) return actualIsDownload ? "Downloaded" : "Uploaded";
+    if (isEncrypting)
+      return actualIsDownload ? "Decrypting..." : "Encrypting...";
+    if (isProcessing)
+      return actualIsDownload ? "Preparing Download..." : "Processing...";
     if (actualIsDownload) return "Downloading...";
     return "Uploading...";
-  };
+  }
 
   return (
     <div
@@ -559,11 +562,23 @@ function TransferItem({
             {upload.name}
           </p>
           <div className="flex items-center space-x-1 flex-shrink-0">
-            {getActivityIcon()}
+            {getActivityIcon()}{" "}
             <span
-              className={`text-[9px] ${isError ? "text-red-400" : isEncrypting ? "text-purple-400" : actualIsDownload ? "text-blue-400" : "text-green-400"}`}
+              className={`text-[9px] ${
+                isError
+                  ? "text-red-400"
+                  : isEncrypting
+                    ? actualIsDownload
+                      ? "text-blue-400"
+                      : "text-purple-400"
+                    : actualIsDownload
+                      ? "text-blue-400"
+                      : "text-green-400"
+              }`}
             >
-              {isActive ? `${calculateProgress(upload)}%` : getStatusText()}
+              {isActive
+                ? `${calculateProgress(upload)}% ${actualIsDownload ? "downloaded" : "uploaded"}`
+                : getStatusText()}
             </span>
           </div>
         </div>

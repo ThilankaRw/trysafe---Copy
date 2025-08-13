@@ -106,11 +106,10 @@ export default function UploadCornerWindow() {
           onClick={() => setMinimized(false)}
           className="flex items-center space-x-2"
         >
-          <UploadCloud className="w-5 h-5 text-[rgb(31,111,130)]" />
-          <span className="font-medium text-sm">
+          <UploadCloud className="w-5 h-5 text-[rgb(31,111,130)]" />          <span className="font-medium text-sm">
             {activeUploads.length > 0
-              ? `${activeUploads.length} active ${getActiveStatusLabel(activeUploads)}`
-              : `${completedUploads.length} completed uploads`}
+              ? `${activeUploads.length} active ${hasDownloads(activeUploads) ? 'downloads' : 'uploads'}`
+              : `${completedUploads.length} completed ${hasDownloads(completedUploads) ? 'downloads' : 'uploads'}`}
           </span>
           <Maximize2 className="w-4 h-4" />
         </button>
@@ -231,9 +230,8 @@ export default function UploadCornerWindow() {
                     {formatFileSize(upload.size)}
                   </span>
                 </div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs text-gray-500">
-                    {getStatusLabel(upload.status, upload.progress)}
+                <div className="flex justify-between mb-1">                  <span className="text-xs text-gray-500">
+                    {getStatusLabel(upload.status, upload.progress, upload.type === "download" || upload.status === "downloading")}
                   </span>
                   <span className="text-xs">
                     {formatFileSize(upload.uploadedSize || 0)} /{" "}
@@ -293,22 +291,22 @@ function formatFileSize(bytes: number): string {
 }
 
 // Helper function to get status label
-function getStatusLabel(status: string, progress: number): string {
+function getStatusLabel(status: string, progress: number, isDownload: boolean = false): string {
   switch (status) {
     case "uploading":
-      return `Uploading... ${progress}%`;
+      return isDownload ? `Downloading... ${progress}%` : `Uploading... ${progress}%`;
     case "downloading":
       return `Downloading... ${progress}%`;
     case "encrypting":
-      return "Processing...";
+      return isDownload ? "Decrypting..." : "Encrypting...";
     case "processing":
-      return "Preparing...";
+      return isDownload ? "Preparing download..." : "Processing...";
     case "paused":
-      return "Paused";
+      return isDownload ? "Download paused" : "Upload paused";
     case "completed":
-      return "Completed";
+      return isDownload ? "Downloaded" : "Uploaded";
     case "failed":
-      return "Failed";
+      return isDownload ? "Download failed" : "Upload failed";
     default:
       return `${status} ${progress}%`;
   }
@@ -321,8 +319,14 @@ function hasDownloads(uploads: any[]): boolean {
 
 // Helper function to get a label for active operations
 function getActiveStatusLabel(uploads: any[]): string {
-  if (uploads.some((u) => u.status === "downloading")) {
+  const downloadCount = uploads.filter(u => u.type === "download" || u.status === "downloading").length;
+  const uploadCount = uploads.length - downloadCount;
+  
+  if (downloadCount > 0 && uploadCount === 0) {
     return "downloads";
+  } else if (uploadCount > 0 && downloadCount === 0) {
+    return "uploads";
+  } else {
+    return "transfers";
   }
-  return "uploads";
 }

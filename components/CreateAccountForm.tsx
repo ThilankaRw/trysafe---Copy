@@ -129,6 +129,31 @@ export function CreateAccountForm() {
         return;
       }
 
+      // Initialize server secret for additional security layer
+      try {
+        const serverSecretResponse = await fetch(
+          "/api/auth/initialize-server-secret",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!serverSecretResponse.ok) {
+          console.warn(
+            "Server secret initialization failed, but continuing with registration"
+          );
+          // Don't stop registration flow - server-side encryption is optional
+        } else {
+          console.log("Server secret initialized successfully");
+        }
+      } catch (serverSecretError) {
+        console.warn("Server secret initialization error:", serverSecretError);
+        // Don't stop registration flow - server-side encryption is optional
+      }
+
       toast.success("Account created successfully");
 
       // Set up 2FA

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -24,8 +24,55 @@ import { useSecureStore } from "@/store/useSecureStore";
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const router = useRouter();
-  const { initializeStorage, reinitializeStorage, isInitialized } = useSecureStore();
+  const { initializeStorage, reinitializeStorage, isInitialized } =
+    useSecureStore();
+
+  useEffect(() => {
+    if (
+      !window.PublicKeyCredential ||
+      !PublicKeyCredential.isConditionalMediationAvailable
+    ) {
+      return;
+    }
+
+    const passkeySignIn = async () => {
+      try {
+        const result = await authClient.signIn.passkey({ autoFill: true });
+        if (result?.error) {
+          // Handle error silently for autofill
+          console.error("Passkey autofill error:", result.error);
+          return;
+        }
+        toast.success("Passkey sign-in successful");
+        router.push("/dashboard");
+      } catch (error) {
+        console.error("Passkey autofill error:", error);
+      }
+    };
+
+    passkeySignIn();
+  }, []);
+
+  const handlePasskeySignIn = async () => {
+    setIsPasskeyLoading(true);
+    try {
+      const result = await authClient.signIn.passkey();
+      if (result?.error) {
+        toast.error(result.error.message || "Passkey sign-in failed");
+        setIsPasskeyLoading(false);
+        return;
+      }
+      toast.success("Passkey sign-in successful");
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Passkey sign-in error:", error);
+      toast.error("An error occurred during passkey sign-in");
+    } finally {
+      setIsPasskeyLoading(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,7 +90,7 @@ export function LoginForm() {
       });
 
       if (result?.error) {
-        toast.error(result.error.message || 'Authentication failed');
+        toast.error(result.error.message || "Authentication failed");
         setIsLoading(false);
         return;
       }
@@ -94,6 +141,7 @@ export function LoginForm() {
               type="email"
               placeholder="m@example.com"
               required
+              autoComplete="username webauthn"
             />
           </div>
           <div className="space-y-2">
@@ -104,6 +152,7 @@ export function LoginForm() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 required
+                autoComplete="current-password webauthn"
               />
               <Button
                 type="button"
@@ -145,9 +194,23 @@ export function LoginForm() {
             <span className="bg-background px-2 text-muted-foreground">Or</span>
           </div>
         </div>
-        <Button variant="outline" className="w-full">
-          <Key className="mr-2 h-4 w-4" />
-          Sign in with Passkey
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handlePasskeySignIn}
+          disabled={isPasskeyLoading}
+        >
+          {isPasskeyLoading ? (
+            <>
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            <>
+              <Key className="mr-2 h-4 w-4" />
+              Sign in with Passkey
+            </>
+          )}
         </Button>
         <Button variant="outline" className="w-full" asChild>
           <Link href="/create-account">Create an Account</Link>

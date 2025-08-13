@@ -68,23 +68,32 @@ export default async function handler(
       return res.status(404).json({ error: "File not found" });
     }
 
-    // Generate pre-signed URLs for each chunk
+    // Generate URLs for each chunk (using our secure download endpoint for server-encrypted chunks)
     const downloadUrls = await Promise.all(
       fileDoc.chunks.map(async (chunk: any) => {
-        const command = new GetObjectCommand({
-          Bucket: process.env.AWS_BUCKET_NAME!,
-          Key: chunk.s3Key,
-        });
+        let url: string;
 
-        const signedUrl = await getSignedUrl(s3Client, command, {
-          expiresIn: 3600,
-        });
+        if (chunk.serverEncrypted) {
+          // Use our secure endpoint for server-encrypted chunks
+          url = `${req.headers.origin || "http://localhost:3000"}/api/files/download-chunk?chunkId=${chunk.id}`;
+        } else {
+          // Use direct S3 download for non-server-encrypted chunks
+          const command = new GetObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME!,
+            Key: chunk.s3Key,
+          });
+
+          url = await getSignedUrl(s3Client, command, {
+            expiresIn: 3600,
+          });
+        }
 
         return {
-          url: signedUrl,
+          url,
           chunkOrder: chunk.chunkOrder,
           encryptionIV: chunk.encryptionIV,
           checksum: chunk.checksum,
+          serverEncrypted: chunk.serverEncrypted || false,
         };
       })
     );

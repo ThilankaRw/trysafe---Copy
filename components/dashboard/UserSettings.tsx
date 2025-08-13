@@ -1,20 +1,43 @@
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { X, User, Bell, Shield, HardDrive } from "lucide-react"
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { X, User, Bell, Shield, HardDrive, LoaderCircle } from "lucide-react";
+import { Button } from "../ui/button";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 interface UserSettingsProps {
-  onClose: () => void
+  onClose: () => void;
 }
 
 export default function UserSettings({ onClose }: UserSettingsProps) {
-  const [activeTab, setActiveTab] = useState("profile")
+  const [activeTab, setActiveTab] = useState("profile");
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const handleRegisterPasskey = async () => {
+    setIsRegistering(true);
+    try {
+      const result = await authClient.passkey.addPasskey({
+        authenticatorAttachment: "platform",
+      });
+      if (result?.error) {
+        toast.error(result.error.message || "Failed to register passkey.");
+      } else {
+        toast.success("Passkey registered successfully!");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred while registering passkey.");
+      console.error("Passkey registration error:", err);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Security", icon: Shield },
     { id: "storage", label: "Storage", icon: HardDrive },
-  ]
+  ];
 
   return (
     <motion.div
@@ -64,19 +87,47 @@ export default function UserSettings({ onClose }: UserSettingsProps) {
             )}
             {activeTab === "notifications" && (
               <div>
-                <h3 className="text-lg font-semibold mb-4">Notification Preferences</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Notification Preferences
+                </h3>
                 {/* Add notification settings here */}
               </div>
             )}
             {activeTab === "security" && (
               <div>
-                <h3 className="text-lg font-semibold mb-4">Security Settings</h3>
-                {/* Add security settings here */}
+                <h3 className="text-lg font-semibold mb-4">
+                  Security Settings
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium">Passkeys</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Use passkeys for a more secure and convenient sign-in
+                      experience. Register a passkey using your device's native
+                      biometrics (like fingerprint or face ID).
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleRegisterPasskey}
+                    disabled={isRegistering}
+                  >
+                    {isRegistering ? (
+                      <>
+                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                        Follow browser prompts...
+                      </>
+                    ) : (
+                      "Register a new Passkey"
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
             {activeTab === "storage" && (
               <div>
-                <h3 className="text-lg font-semibold mb-4">Storage Management</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Storage Management
+                </h3>
                 {/* Add storage management options here */}
               </div>
             )}
@@ -84,6 +135,5 @@ export default function UserSettings({ onClose }: UserSettingsProps) {
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
-

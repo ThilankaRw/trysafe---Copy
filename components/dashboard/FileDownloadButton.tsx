@@ -8,9 +8,13 @@ import { useSecureStore } from "@/store/useSecureStore";
 import { toast } from "sonner";
 import { UploadProgress } from "@/lib/secure-storage";
 
+const MAX_DOWNLOAD_SIZE = 2 * 1024 * 1024 * 1024; // 2GB limit
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+
 interface FileDownloadButtonProps {
   fileId: string;
   fileName: string;
+  fileSize?: number;
   className?: string;
   variant?:
     | "ghost"
@@ -26,6 +30,7 @@ interface FileDownloadButtonProps {
 export function FileDownloadButton({
   fileId,
   fileName,
+  fileSize = 0,
   className,
   variant = "ghost",
   size = "icon",
@@ -38,6 +43,14 @@ export function FileDownloadButton({
   const handleDownload = async () => {
     if (isDownloading) return;
 
+    // Size check
+    if (fileSize > MAX_DOWNLOAD_SIZE) {
+      toast.error(
+        `File is too large to download (max size: ${MAX_DOWNLOAD_SIZE / (1024 * 1024)}MB)`
+      );
+      return;
+    }
+
     // Create a unique ID for this download
     const downloadId = `download-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -48,31 +61,44 @@ export function FileDownloadButton({
       addUpload({
         id: downloadId,
         name: fileName,
-        size: 1, // We don't know the size yet, will be updated
+        size: fileSize || 1, // Use known size if available
         uploadedSize: 0,
         progress: 0,
-        status: "processing", // Reuse existing status
+        status: "downloading",
+        type: "download",
       });
 
-      // Start the download process using a type adapter function
+      // Start the download process
       const fileBlob = await downloadFile(
         fileId,
         (progress: UploadProgress) => {
+          // Validate progress data
+          if (!progress || typeof progress.percentage !== "number") {
+            throw new Error("Invalid progress data received");
+          }
+
           // Update progress using the upload context
           updateUpload(downloadId, {
             size: progress.totalBytes,
             uploadedSize: progress.uploadedBytes,
             progress: Math.round(progress.percentage),
-            status: progress.percentage < 100 ? "downloading" : "encrypting",
+            status: progress.percentage < 100 ? "downloading" : "processing",
+            type: "download",
           });
         }
       );
+
+      // Validate the downloaded blob
+      if (!fileBlob || !(fileBlob instanceof Blob)) {
+        throw new Error("Downloaded file is invalid");
+      }
 
       // Mark as completed when done
       updateUpload(downloadId, {
         uploadedSize: fileBlob.size,
         progress: 100,
         status: "completed",
+        type: "download",
       });
 
       // Create download link and trigger browser download
@@ -80,28 +106,47 @@ export function FileDownloadButton({
       const a = document.createElement("a");
       a.href = url;
       a.download = fileName;
+      a.style.display = "none"; // Hide the element
       document.body.appendChild(a);
-      a.click();
 
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
+      // Use a promise to handle the download completion
+      await new Promise((resolve, reject) => {
+        a.onclick = resolve;
+        a.onerror = reject;
+        a.click();
+
+        // Cleanup after a short delay
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          resolve(true);
+        }, 1000);
+      });
 
       toast.success(`${fileName} downloaded successfully`);
     } catch (error) {
       console.error("Download error:", error);
 
-      // Update the status to failed
+      // Detailed error handling
+      let errorMessage = "Download failed";
+      if (error instanceof Error) {
+        if (error.message.includes("storage not initialized")) {
+          errorMessage = "Please unlock your secure storage first";
+        } else if (error.message.includes("network")) {
+          errorMessage = "Network error occurred while downloading";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      // Update the status to failed with specific error
       updateUpload(downloadId, {
         status: "failed",
-        error: error instanceof Error ? error.message : "Download failed",
+        error: errorMessage,
+        type: "download",
       });
 
-      toast.error(
-        `Failed to download ${fileName}: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      toast.error(`Failed to download ${fileName}: ${errorMessage}`);
     } finally {
       setIsDownloading(false);
     }
@@ -114,6 +159,7 @@ export function FileDownloadButton({
       onClick={handleDownload}
       disabled={isDownloading}
       className={className}
+      title={isDownloading ? "Downloading..." : `Download ${fileName}`}
     >
       {children || <Download className="h-4 w-4" />}
     </Button>
