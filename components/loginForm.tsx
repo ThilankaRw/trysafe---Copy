@@ -220,9 +220,12 @@ export function LoginForm() {
             Forgot password?
           </a>
           <span className="mx-2">•</span>
-          <a href="#" className="text-primary hover:underline">
+          <Link
+            href="/support/contact"
+            className="text-primary hover:underline"
+          >
             Contact IT support
-          </a>
+          </Link>
         </div>
       </CardFooter>
     </Card>
