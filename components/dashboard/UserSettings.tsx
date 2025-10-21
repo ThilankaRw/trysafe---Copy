@@ -103,8 +103,8 @@ export default function UserSettings({ onClose }: UserSettingsProps) {
                     <h4 className="font-medium">Passkeys</h4>
                     <p className="text-sm text-muted-foreground">
                       Use passkeys for a more secure and convenient sign-in
-                      experience. Register a passkey using your device&apos;s native
-                      biometrics (like fingerprint or face ID).
+                      experience. Register a passkey using your device&apos;s
+                      native biometrics (like fingerprint or face ID).
                     </p>
                   </div>
                   <Button
