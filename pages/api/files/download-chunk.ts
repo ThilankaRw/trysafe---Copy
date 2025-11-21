@@ -45,6 +45,8 @@ export default async function handler(
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    const startTime = Date.now();
+
     const chunkId = req.query.chunkId as string;
     if (!chunkId) {
       return res.status(400).json({ error: "Chunk ID is required" });
@@ -111,6 +113,11 @@ export default async function handler(
     res.setHeader("Content-Type", "application/octet-stream");
     res.setHeader("Content-Length", chunkData.length);
     res.setHeader("Cache-Control", "private, no-cache");
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `[download-chunk] chunk=${chunkId} user=${session.user.id} serverEncrypted=${chunk.serverEncrypted} size=${chunkData.length} duration=${duration}ms`
+    );
 
     // Send the chunk data
     res.status(200).send(chunkData);

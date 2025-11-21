@@ -57,6 +57,8 @@ export default async function handler(
     const userId = session.user.id;
     const { filename, mimeType, fileSize, parentFolderId } = req.body;
 
+    const startTime = Date.now();
+
     if (!filename || !mimeType || !fileSize) {
       return res.status(400).json({ error: "Missing required fields" });
     }
@@ -125,6 +127,11 @@ export default async function handler(
           s3Key: chunk.s3Key,
         };
       })
+    );
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `[initialize-upload] userId=${userId} filename=${filename} fileSize=${fileSize} totalChunks=${totalChunks} duration=${duration}ms`
     );
 
     return res.status(200).json({

@@ -1,13 +1,13 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-import crypto from 'crypto'
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import crypto from "crypto";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 const getWebCrypto = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return window.crypto;
   }
   return crypto.webcrypto as Crypto;
@@ -23,30 +23,46 @@ export function generateSalt(): string {
 /**
  * Derives an encryption key from a password and salt using PBKDF2
  */
-export async function deriveKey(password: string, salt: string): Promise<CryptoKey> {
+export async function deriveKey(
+  password: string,
+  salt: string
+): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const webCrypto = getWebCrypto();
-  
+
+  const start = Date.now();
   const keyMaterial = await webCrypto.subtle.importKey(
-    'raw',
+    "raw",
     encoder.encode(password),
-    'PBKDF2',
+    "PBKDF2",
     false,
-    ['deriveBits', 'deriveKey']
+    ["deriveBits", "deriveKey"]
   );
 
-  return await webCrypto.subtle.deriveKey(
+  const derived = await webCrypto.subtle.deriveKey(
     {
-      name: 'PBKDF2',
+      name: "PBKDF2",
       salt: encoder.encode(salt),
       iterations: 100000,
-      hash: 'SHA-256',
+      hash: "SHA-256",
     },
     keyMaterial,
-    { name: 'AES-GCM', length: 256 },
+    { name: "AES-GCM", length: 256 },
     false,
-    ['encrypt', 'decrypt']
+    ["encrypt", "decrypt"]
   );
+
+  const duration = Date.now() - start;
+  try {
+    // Don't log sensitive material like the password or raw key; log salt and duration only
+    console.log(
+      `[deriveKey] salt=${salt.slice(0, 8)}... iterations=100000 duration=${duration}ms`
+    );
+  } catch (e) {
+    // swallow logging errors
+  }
+
+  return derived;
 }
 
 /**
@@ -64,8 +80,8 @@ export function generateIV(): Uint8Array {
  */
 export function arrayBufferToHex(buffer: ArrayBuffer): string {
   return Array.from(new Uint8Array(buffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -84,7 +100,7 @@ export function hexToArrayBuffer(hex: string): ArrayBuffer {
  */
 export function generateUUID(): string {
   const webCrypto = getWebCrypto();
-  if ('randomUUID' in webCrypto) {
+  if ("randomUUID" in webCrypto) {
     return webCrypto.randomUUID();
   }
   // Fallback for older browsers
@@ -121,7 +137,7 @@ export async function retryWithBackoff<T>(
       );
 
       config.onRetry?.(lastError, attempt);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw lastError!;

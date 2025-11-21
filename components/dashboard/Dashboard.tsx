@@ -45,10 +45,6 @@ export default function Dashboard() {
   const [showUploadPopup, setShowUploadPopup] = useState(false);
   const { uploads } = useUpload();
 
-  console.log({
-    isInitialized,
-  });
-
   useEffect(() => {
     console.log(
       `[Dashboard] Reinit check: isAuthLoading=${isAuthLoading}, isAuthenticated=${isAuthenticated}, isInitialized=${isInitialized}`

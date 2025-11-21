@@ -39,6 +39,8 @@ export default async function handler(
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    const startTime = Date.now();
+
     if (!session || !session.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -96,6 +98,14 @@ export default async function handler(
           serverEncrypted: chunk.serverEncrypted || false,
         };
       })
+    );
+
+    const duration = Date.now() - startTime;
+    const serverEncryptedCount = fileDoc.chunks.filter(
+      (c: any) => c.serverEncrypted
+    ).length;
+    console.log(
+      `[prepare-download] userId=${userId} fileId=${fileId} totalChunks=${fileDoc.totalChunks} serverEncrypted=${serverEncryptedCount} duration=${duration}ms`
     );
 
     return res.status(200).json({
