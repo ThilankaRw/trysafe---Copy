@@ -120,7 +120,7 @@ export default function UploadArea({ currentFolder }: UploadAreaProps) {
                 Select Files to Upload
               </h2>
               <input
-                type="file"
+                {...(getInputProps() as any)}
                 multiple
                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors"
               />

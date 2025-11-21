@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import crypto from "crypto";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -10,7 +9,14 @@ const getWebCrypto = () => {
   if (typeof window !== "undefined") {
     return window.crypto;
   }
-  return crypto.webcrypto as Crypto;
+  // Prefer globalThis.crypto when running in Node 18+ or environments that
+  // expose the Web Crypto API on globalThis. Avoid importing Node's "crypto"
+  // module at top-level to prevent bundlers including server-only modules
+  // into client bundles.
+  if (typeof globalThis !== "undefined" && (globalThis as any).crypto) {
+    return (globalThis as any).crypto as Crypto;
+  }
+  throw new Error("Web Crypto API is not available in this environment");
 };
 
 export function generateSalt(): string {

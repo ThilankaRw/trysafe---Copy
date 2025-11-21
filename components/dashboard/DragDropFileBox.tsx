@@ -104,20 +104,8 @@ export function DragDropFileBox() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxSize: 100 * 1024 * 1024, // 100MB max file size
-    accept: {
-      // Allow all common file types
-      "image/*": [".png", ".jpg", ".jpeg", ".gif"],
-      "application/pdf": [".pdf"],
-      "application/msword": [".doc"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
-      "application/vnd.ms-excel": [".xls"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-        ".xlsx",
-      ],
-      "text/plain": [".txt"],
-      "application/zip": [".zip"],
-    },
+    // No `accept` here so all file types are allowed. This enables uploading
+    // arbitrary files (images, videos, archives, executables, etc.).
   });
 
   return (

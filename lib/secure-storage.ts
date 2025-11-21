@@ -35,7 +35,9 @@ export class SecureFileStorage {
     const webCrypto =
       typeof window !== "undefined"
         ? window.crypto
-        : require("crypto").webcrypto;
+        : typeof globalThis !== "undefined" && (globalThis as any).crypto
+          ? (globalThis as any).crypto
+          : undefined;
     const start = Date.now();
 
     const encryptedData = await webCrypto.subtle.encrypt(
@@ -71,7 +73,9 @@ export class SecureFileStorage {
     const webCrypto =
       typeof window !== "undefined"
         ? window.crypto
-        : require("crypto").webcrypto;
+        : typeof globalThis !== "undefined" && (globalThis as any).crypto
+          ? (globalThis as any).crypto
+          : undefined;
 
     return await webCrypto.subtle.decrypt(
       {
@@ -87,7 +91,9 @@ export class SecureFileStorage {
     const webCrypto =
       typeof window !== "undefined"
         ? window.crypto
-        : require("crypto").webcrypto;
+        : typeof globalThis !== "undefined" && (globalThis as any).crypto
+          ? (globalThis as any).crypto
+          : undefined;
     const start = Date.now();
     const hashBuffer = await webCrypto.subtle.digest("SHA-256", data);
     const duration = Date.now() - start;
