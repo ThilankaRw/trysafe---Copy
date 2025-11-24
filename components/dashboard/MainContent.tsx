@@ -1,8 +1,7 @@
 import WelcomeMessage from "./WelcomeMessage";
 import FileGrid from "./FileGrid";
-import { DragDropFileBox } from "./DragDropFileBox";
+import UploadSection from "./UploadSection";
 import { Skeleton } from "@/components/ui/skeleton";
-import TransferPanel from "./TransferPanel";
 
 // Define the type for the file data (should match Dashboard.tsx)
 type FileData = {
@@ -29,7 +28,7 @@ export default function MainContent({
   return (
     <main className="flex-1 p-6 overflow-auto bg-gray-50 dark:bg-gray-900">
       <WelcomeMessage />
-      <DragDropFileBox />
+      <UploadSection />
 
       {/* Handle loading state and pass props to FileGrid */}
       {isLoading ? (
@@ -41,9 +40,6 @@ export default function MainContent({
       ) : (
         <FileGrid files={files} onFileDelete={onFileDelete} />
       )}
-
-      {/* Transfer notification panel */}
-      <TransferPanel />
     </main>
   );
 }

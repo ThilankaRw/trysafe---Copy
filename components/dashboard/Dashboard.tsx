@@ -1,12 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-// import { useSession } from 'next-auth/react'; // Previous incorrect assumption
-
-// --- PLACEHOLDER: Import the hook from your actual auth library ---
-// import { useBetterAuth } from '@/lib/better-auth'; // Example placeholder
-// -------------------------------------------------------------------
-
+import { useState, useEffect, useCallback } from "react";
+import { authClient } from "@/lib/auth-client";
 import { useSecureStore } from "@/store/useSecureStore";
 import { toast } from "sonner";
 import TopNav from "./TopNav";
@@ -15,11 +10,9 @@ import MainContent from "./MainContent";
 import Footer from "./Footer";
 import { Skeleton } from "@/components/ui/skeleton"; // For loading state
 import { PassphrasePrompt } from "../secure-storage/PassphrasePrompt";
-import UploadPopup from "./UploadPopup";
 import { useUpload } from "@/contexts/UploadContext";
-import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
-import TransferPanel from "./TransferPanel";
+import TransferManager from "./TransferManager";
+import { DashboardProvider, useDashboard } from "@/contexts/DashboardContext";
 
 // Define a type for the file data (adjust based on your actual API response)
 type FileData = {
@@ -30,20 +23,17 @@ type FileData = {
   encrypted: boolean;
 };
 
-export default function Dashboard() {
-  // --- PLACEHOLDER: Use your actual auth hook here ---
-  // const { isAuthenticated, isLoading: isAuthLoading } = useBetterAuth(); // Example placeholder
-  const isAuthenticated = true; // TEMPORARY: Assume authenticated for structure
-  const isAuthLoading = false; // TEMPORARY: Assume auth check is done
-  // ----------------------------------------------------
+function DashboardInner() {
+  // Use the lightweight client auth hook to determine session state
+  const { data: session, isPending: isAuthLoading } = authClient.useSession();
+  const isAuthenticated = !!session?.user;
 
   const { isInitialized, reinitializeStorage } = useSecureStore();
   const [files, setFiles] = useState<FileData[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(true); // Renamed for clarity
   const [showReinitPrompt, setShowReinitPrompt] = useState(false);
   const [isReinitializing, setIsReinitializing] = useState(false);
-  const [showUploadPopup, setShowUploadPopup] = useState(false);
-  const { uploads } = useUpload();
+  const { setRefreshCallback } = useDashboard();
 
   useEffect(() => {
     console.log(
@@ -64,42 +54,52 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isAuthLoading, isInitialized]);
 
+  // Fetch files function - can be called anytime to refresh
+  const fetchFiles = useCallback(async () => {
+    if (!isInitialized) {
+      setIsLoadingFiles(false);
+      return;
+    }
+
+    console.log("[Dashboard] Fetching files...");
+    setIsLoadingFiles(true);
+    try {
+      const response = await fetch("/api/files", {
+        cache: "no-store", // Ensure fresh data
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            `Failed to fetch files (status: ${response.status})`
+        );
+      }
+      const data = await response.json();
+      setFiles(data.files || []);
+      console.log(`[Dashboard] Loaded ${data.files?.length || 0} files`);
+    } catch (error: any) {
+      console.error("Error fetching files:", error);
+      toast.error(`Could not load your files: ${error.message}`);
+      setFiles([]);
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  }, [isInitialized]);
+
+  // Register refresh callback with context
+  useEffect(() => {
+    setRefreshCallback(fetchFiles);
+  }, [fetchFiles, setRefreshCallback]);
+
   // Effect to fetch files - runs only when isInitialized becomes true
   useEffect(() => {
     console.log(
       `[Dashboard] File fetch check: isInitialized = ${isInitialized}`
     );
-    if (!isInitialized) {
-      // We might be showing the prompt, or auth hasn't finished, wait.
-      setIsLoadingFiles(false); // Ensure loading state is off if we skip fetch
-      return;
+    if (isInitialized) {
+      fetchFiles();
     }
-    console.log("[Dashboard] Fetching files...");
-
-    const fetchFiles = async () => {
-      setIsLoadingFiles(true);
-      try {
-        const response = await fetch("/api/files");
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.message ||
-              `Failed to fetch files (status: ${response.status})`
-          );
-        }
-        const data = await response.json();
-        setFiles(data.files || []);
-      } catch (error: any) {
-        console.error("Error fetching files:", error);
-        toast.error(`Could not load your files: ${error.message}`);
-        setFiles([]);
-      } finally {
-        setIsLoadingFiles(false);
-      }
-    };
-
-    fetchFiles();
-  }, [isInitialized]); // Dependency: This effect runs when isInitialized changes
+  }, [isInitialized, fetchFiles]); // Dependency: This effect runs when isInitialized changes
 
   // Function to handle file deletion (passed down to update state)
   const handleFileDelete = (fileId: string) => {
@@ -141,7 +141,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background text-foreground flex">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <TopNav onShowUploads={() => setShowUploadPopup(true)} />
+        <TopNav />
         {/* Render MainContent only if initialized, otherwise show placeholder/loader */}
         {isAuthenticated && isInitialized ? (
           <MainContent
@@ -175,13 +175,16 @@ export default function Dashboard() {
         // encryptionParams not needed for re-initialization
       />
 
-      {/* Upload Popup */}
-      {showUploadPopup && (
-        <UploadPopup onClose={() => setShowUploadPopup(false)} />
-      )}
-
-      {/* Transfer Panel for upload/download indicators */}
-      <TransferPanel />
+      {/* Transfer Manager - Floating button and panel */}
+      <TransferManager />
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <DashboardProvider>
+      <DashboardInner />
+    </DashboardProvider>
   );
 }

@@ -123,7 +123,6 @@ export function FileDownloadButton({
         }, 1000);
       });
 
-      toast.success(`${fileName} downloaded successfully`);
     } catch (error) {
       console.error("Download error:", error);
 
@@ -145,8 +144,6 @@ export function FileDownloadButton({
         error: errorMessage,
         type: "download",
       });
-
-      toast.error(`Failed to download ${fileName}: ${errorMessage}`);
     } finally {
       setIsDownloading(false);
     }
