@@ -7,12 +7,14 @@ import { toast } from "sonner";
 import TopNav from "./TopNav";
 import Sidebar from "./Sidebar";
 import MainContent from "./MainContent";
-import Footer from "./Footer";
+import RightPanel from "./RightPanel";
+import TransferManager from "./TransferManager";
 import { Skeleton } from "@/components/ui/skeleton"; // For loading state
 import { PassphrasePrompt } from "../secure-storage/PassphrasePrompt";
-import { useUpload } from "@/contexts/UploadContext";
-import TransferManager from "./TransferManager";
 import { DashboardProvider, useDashboard } from "@/contexts/DashboardContext";
+import { useDropzone } from "react-dropzone";
+import { useFileUploader } from "@/hooks/useFileUploader";
+import GlobalDropzone from "./GlobalDropzone";
 
 // Define a type for the file data (adjust based on your actual API response)
 type FileData = {
@@ -21,6 +23,8 @@ type FileData = {
   mimeType: string;
   size: number;
   encrypted: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 function DashboardInner() {
@@ -34,6 +38,21 @@ function DashboardInner() {
   const [showReinitPrompt, setShowReinitPrompt] = useState(false);
   const [isReinitializing, setIsReinitializing] = useState(false);
   const { setRefreshCallback } = useDashboard();
+  
+  // File Upload Hook
+  const { handleUpload } = useFileUploader();
+
+  // Global Dropzone Config
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+      handleUpload(acceptedFiles);
+  }, [handleUpload]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      onDrop,
+      noClick: true,
+      noKeyboard: true,
+      disabled: !isAuthenticated || !isInitialized,
+  });
 
   useEffect(() => {
     console.log(
@@ -138,26 +157,32 @@ function DashboardInner() {
   // if (!isAuthenticated) { return <p>Redirecting to login...</p>; }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex">
+    <div {...getRootProps()} className="h-screen bg-background text-foreground flex overflow-hidden relative outline-none">
+      <input {...getInputProps()} />
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <TopNav />
-        {/* Render MainContent only if initialized, otherwise show placeholder/loader */}
-        {isAuthenticated && isInitialized ? (
-          <MainContent
-            files={files}
-            isLoading={isLoadingFiles}
-            onFileDelete={handleFileDelete}
-          />
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-6">
-            {/* Show message while waiting for prompt/initialization, hide if prompt is shown */}
-            {!showReinitPrompt && isAuthenticated && <p>Please wait...</p>}
-            {!isAuthenticated && <p>Error: Not authenticated.</p>}
-          </div>
-        )}
-        <Footer />
+        <div className="flex-1 flex overflow-hidden relative">
+            {/* Render MainContent only if initialized, otherwise show placeholder/loader */}
+            {isAuthenticated && isInitialized ? (
+              <MainContent
+                files={files}
+                isLoading={isLoadingFiles}
+                onFileDelete={handleFileDelete}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-6">
+                {/* Show message while waiting for prompt/initialization, hide if prompt is shown */}
+                {!showReinitPrompt && isAuthenticated && <p>Please wait...</p>}
+                {!isAuthenticated && <p>Error: Not authenticated.</p>}
+              </div>
+            )}
+            <RightPanel />
+        </div>
       </div>
+
+      {/* Global Dropzone Overlay */}
+      <GlobalDropzone isDragActive={isDragActive} />
 
       {/* Re-initialization Passphrase Prompt (Rendered conditionally by state) */}
       <PassphrasePrompt
