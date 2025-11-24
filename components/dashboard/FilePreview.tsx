@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { X, Download, Share } from "lucide-react"
-import { SecureFileStorage } from "@/lib/secure-storage"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Download, Share } from "lucide-react";
+import { SecureFileStorage } from "@/lib/secure-storage";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface FilePreviewProps {
   file: {
@@ -14,55 +14,55 @@ interface FilePreviewProps {
     name: string;
     type: string;
     url?: string;
-  }
-  onClose: () => void
+  };
+  onClose: () => void;
 }
 
 export default function FilePreview({ file, onClose }: FilePreviewProps) {
-  const [isVisible, setIsVisible] = useState(true)
-  const [downloadProgress, setDownloadProgress] = useState(0)
-  const [isDownloading, setIsDownloading] = useState(false)
+  const [isVisible, setIsVisible] = useState(true);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleClose = () => {
-    setIsVisible(false)
-    setTimeout(onClose, 300) // Wait for exit animation to complete
-  }
+    setIsVisible(false);
+    setTimeout(onClose, 300); // Wait for exit animation to complete
+  };
 
   const handleDownload = async () => {
     try {
-      setIsDownloading(true)
-      setDownloadProgress(0)
+      setIsDownloading(true);
+      setDownloadProgress(0);
 
       // TODO: In production, use a proper key derivation from user's master key/password
-      const password = "temporary-password" // This should come from user's master key
+      const password = "temporary-password"; // This should come from user's master key
 
       const downloadedFile = await SecureFileStorage.downloadFile(
         file.id,
         password,
         (progress) => {
-          setDownloadProgress(progress.percentage)
+          setDownloadProgress(progress.percentage);
         }
-      )
+      );
 
       // Create download URL and trigger download
-      const downloadUrl = URL.createObjectURL(downloadedFile.data)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = downloadedFile.filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(downloadUrl)
+      const downloadUrl = URL.createObjectURL(downloadedFile.data);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = downloadedFile.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
 
-      toast.success('File downloaded successfully')
+      toast.success("File downloaded successfully");
     } catch (error) {
-      console.error('Download error:', error)
-      toast.error('Failed to download file')
+      console.error("Download error:", error);
+      toast.error("Failed to download file");
     } finally {
-      setIsDownloading(false)
-      setDownloadProgress(0)
+      setIsDownloading(false);
+      setDownloadProgress(0);
     }
-  }
+  };
 
   return (
     <AnimatePresence>
@@ -92,9 +92,18 @@ export default function FilePreview({ file, onClose }: FilePreviewProps) {
 
             <div className="mb-4">
               {file.type.startsWith("image/") ? (
-                <img src={file.url || "/placeholder.svg"} alt={file.name} className="max-w-full h-auto rounded" />
+                <img
+                  src={file.url || "/placeholder.svg"}
+                  alt={file.name}
+                  className="max-w-full h-auto rounded"
+                />
               ) : file.type === "application/pdf" ? (
-                <embed src={file.url} type="application/pdf" width="100%" height="500px" />
+                <embed
+                  src={file.url}
+                  type="application/pdf"
+                  width="100%"
+                  height="500px"
+                />
               ) : (
                 <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded">
                   Preview not available for encrypted file.
@@ -115,7 +124,7 @@ export default function FilePreview({ file, onClose }: FilePreviewProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => toast.info('Sharing coming soon')}
+                onClick={() => toast.info("Sharing coming soon")}
                 disabled={isDownloading}
               >
                 <Share className="w-4 h-4 mr-2" />
@@ -135,6 +144,5 @@ export default function FilePreview({ file, onClose }: FilePreviewProps) {
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }
-

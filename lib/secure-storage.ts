@@ -329,6 +329,7 @@ export class SecureFileStorage {
     onProgress?: (progress: UploadProgress) => void
   ): Promise<{ data: Blob; filename: string; mimeType: string }> {
     try {
+      const overallStart = Date.now();
       // Get file metadata and download URLs
       const prepareResponse = await fetch(
         `/api/files/prepare-download?fileId=${fileId}`
@@ -382,6 +383,31 @@ export class SecureFileStorage {
       for (const chunk of decryptedChunks) {
         combinedArray.set(new Uint8Array(chunk), offset);
         offset += chunk.byteLength;
+      }
+
+      // Log download summary (size, chunks, duration, speed)
+      try {
+        const durationMs = Date.now() - overallStart;
+        const durationSec = Math.max(durationMs / 1000, 0.001);
+        const chunkCount = chunks.length || 0;
+        const speedBytesPerSec = Math.round(downloadedBytes / durationSec);
+        const speedMBps = (speedBytesPerSec / (1024 * 1024)).toFixed(2);
+        const totalMB = (originalSize / (1024 * 1024)).toFixed(2);
+        const avgChunkMB = (
+          originalSize /
+          Math.max(chunkCount, 1) /
+          (1024 * 1024)
+        ).toFixed(3);
+
+        console.log(
+          `\n[downloadSummary] fileId=${fileId} filename=${filename}\n` +
+            `  totalSize=${originalSize} bytes (${totalMB} MB)\n` +
+            `  chunks=${chunkCount} downloaded=${downloadedBytes} bytes avgChunk=${avgChunkMB} MB\n` +
+            `  duration=${durationMs} ms (${durationSec.toFixed(2)} s)\n` +
+            `  speed=${speedMBps} MB/s (${speedBytesPerSec} B/s)\n`
+        );
+      } catch (e) {
+        // ignore logging errors
       }
 
       return {
