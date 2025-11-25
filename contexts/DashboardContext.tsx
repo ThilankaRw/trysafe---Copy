@@ -5,12 +5,15 @@ import React, { createContext, useContext, useCallback, useState } from "react";
 interface DashboardContextType {
   refreshFiles: () => void;
   setRefreshCallback: (callback: () => void) => void;
+  activeRightPanel: 'storage' | 'transfer' | null;
+  setActiveRightPanel: (panel: 'storage' | 'transfer' | null) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [refreshCallback, setRefreshCallbackState] = useState<(() => void) | null>(null);
+  const [activeRightPanel, setActiveRightPanel] = useState<'storage' | 'transfer' | null>(null);
 
   const setRefreshCallback = useCallback((callback: () => void) => {
     setRefreshCallbackState(() => callback);
@@ -24,7 +27,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [refreshCallback]);
 
   return (
-    <DashboardContext.Provider value={{ refreshFiles, setRefreshCallback }}>
+    <DashboardContext.Provider value={{ refreshFiles, setRefreshCallback, activeRightPanel, setActiveRightPanel }}>
       {children}
     </DashboardContext.Provider>
   );

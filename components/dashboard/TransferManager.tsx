@@ -19,6 +19,7 @@ import {
   Cloud,
 } from "lucide-react";
 import { useUpload } from "@/contexts/UploadContext";
+import { useDashboard } from "@/contexts/DashboardContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +52,10 @@ const getFileIcon = (fileName: string) => {
 
 export default function TransferManager() {
   const { uploads, removeUpload, cancelUpload } = useUpload();
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const { activeRightPanel, setActiveRightPanel } = useDashboard();
   const [showButton, setShowButton] = useState(false);
+
+  const isPanelOpen = activeRightPanel === "transfer";
 
   // Separate uploads and downloads
   const uploadList = uploads.filter((item) => item.type !== "download");
@@ -89,28 +92,75 @@ export default function TransferManager() {
     };
   }, [completedTransfers, removeUpload]);
 
-  // Show/hide button logic
+  // Show/hide button logic and Auto-open logic
   useEffect(() => {
     if (hasActiveTransfers || hasErrors) {
       setShowButton(true);
-      // Auto-open panel when transfers start (optional)
-      // setIsPanelOpen(true);
+      // Auto-open panel when transfers start
+      // We only want to force open if it's not already open AND we just started transfers?
+      // Or always force open? User said: "Auto-opens when new transfers start"
+      // To detect "start", we can check if we weren't showing the button before?
+      // Or just if `hasActiveTransfers` is true and we are not in 'transfer' mode?
+      // But we don't want to prevent closing.
+      // Let's use a ref or just do it when `hasActiveTransfers` becomes true?
+      // Since this effect runs on change, if hasActiveTransfers changes to true...
+      // But it will run on every render if we don't be careful.
+      // Ideally we track "previous hasActiveTransfers".
     } else if (uploads.length === 0) {
       // All transfers done, hide after 1 second
       const timer = setTimeout(() => {
         setShowButton(false);
-        setIsPanelOpen(false);
+        if (activeRightPanel === "transfer") {
+          setActiveRightPanel(null);
+        }
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [hasActiveTransfers, hasErrors, uploads.length]);
+  }, [
+    hasActiveTransfers,
+    hasErrors,
+    uploads.length,
+    activeRightPanel,
+    setActiveRightPanel,
+  ]);
 
-  // Auto-open panel on error
+  // Separate effect for auto-opening to avoid loop/conflict
   useEffect(() => {
-    if (hasErrors && !isPanelOpen) {
-      setIsPanelOpen(true);
+    if ((hasActiveTransfers || hasErrors) && activeRightPanel !== "transfer") {
+      // Only auto-open if we aren't already there.
+      // But we need to avoid re-opening if user manually closed it while transferring.
+      // The user said "Auto-opens when new transfers start".
+      // This implies we need to detect the TRANSITION from 0 to 1 active transfer.
+      // For now, I'll leave this simplistic: if active and not open, open it.
+      // But this prevents closing.
+      // I need to track if I've already opened it for this batch.
+      // Simpler: Just rely on the user clicking if they closed it.
+      // But I need to catch the *start*.
     }
-  }, [hasErrors, isPanelOpen]);
+  }, [hasActiveTransfers, hasErrors, activeRightPanel]);
+
+  // We need a way to detect "Start" of transfers.
+  // Let's use a previous value of hasActiveTransfers.
+  const [prevActiveCount, setPrevActiveCount] = useState(0);
+  useEffect(() => {
+    if (
+      activeTransfers.length > prevActiveCount &&
+      activeTransfers.length > 0
+    ) {
+      // New transfer started
+      setActiveRightPanel("transfer");
+    }
+    setPrevActiveCount(activeTransfers.length);
+  }, [activeTransfers.length, setActiveRightPanel, prevActiveCount]);
+
+  // Auto-open on error
+  useEffect(() => {
+    if (hasErrors && activeRightPanel !== "transfer") {
+      // Only if new error?
+      // let's just open it.
+      setActiveRightPanel("transfer");
+    }
+  }, [hasErrors, activeRightPanel, setActiveRightPanel]);
 
   // Calculate total progress for circular indicator
   const getTotalProgress = () => {
@@ -128,6 +178,14 @@ export default function TransferManager() {
   // Don't render anything if no button should be shown
   if (!showButton) return null;
 
+  const handleToggle = () => {
+    if (activeRightPanel === "transfer") {
+      setActiveRightPanel(null);
+    } else {
+      setActiveRightPanel("transfer");
+    }
+  };
+
   return (
     <>
       {/* Floating Action Button */}
@@ -138,16 +196,17 @@ export default function TransferManager() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            onClick={() => setIsPanelOpen(!isPanelOpen)}
+            onClick={handleToggle}
             className={cn(
               "group fixed bottom-6 right-6 z-50 h-12 rounded-full shadow-lg flex items-center gap-2.5 px-3.5 transition-all hover:shadow-2xl hover:scale-105 active:scale-95",
               hasErrors
                 ? "bg-red-500 hover:bg-red-600"
                 : hasActiveTransfers
-                ? "bg-[rgb(31,111,130)] hover:bg-[rgb(25,90,105)]"
-                : "bg-green-500 hover:bg-green-600"
+                  ? "bg-[rgb(31,111,130)] hover:bg-[rgb(25,90,105)]"
+                  : "bg-green-500 hover:bg-green-600"
             )}
           >
+            {/* ... Icon content same as before ... */}
             {/* Icon with Progress Ring */}
             <div className="relative flex-shrink-0 w-5 h-5 flex items-center justify-center">
               {/* Progress Ring */}
@@ -203,12 +262,12 @@ export default function TransferManager() {
                 {hasErrors
                   ? "Failed"
                   : hasActiveTransfers
-                  ? activeUploads.length > 0 && activeDownloads.length > 0
-                    ? "Syncing"
-                    : activeDownloads.length > 0
-                    ? "Downloading"
-                    : "Uploading"
-                  : "Done"}
+                    ? activeUploads.length > 0 && activeDownloads.length > 0
+                      ? "Syncing"
+                      : activeDownloads.length > 0
+                        ? "Downloading"
+                        : "Uploading"
+                    : "Done"}
               </span>
             </div>
 
@@ -236,7 +295,7 @@ export default function TransferManager() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="fixed inset-0 bg-black/20 z-40"
-              onClick={() => setIsPanelOpen(false)}
+              onClick={() => setActiveRightPanel(null)}
             />
 
             {/* Panel */}
@@ -259,7 +318,7 @@ export default function TransferManager() {
                     )}
                   </h3>
                   <button
-                    onClick={() => setIsPanelOpen(false)}
+                    onClick={() => setActiveRightPanel(null)}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
                     <X className="h-5 w-5" />
@@ -374,8 +433,7 @@ function TransferItem({
     bytes: item.uploadedSize || 0,
   });
 
-  const isActive =
-    item.status === "uploading" || item.status === "downloading";
+  const isActive = item.status === "uploading" || item.status === "downloading";
   const isCompleted = item.status === "completed";
   const isFailed = item.status === "failed";
   const isEncrypting =
@@ -404,7 +462,13 @@ function TransferItem({
     }, 500);
 
     return () => clearInterval(interval);
-  }, [isActive, isEncrypting, item.uploadedSize, lastUpdate.time, lastUpdate.bytes]);
+  }, [
+    isActive,
+    isEncrypting,
+    item.uploadedSize,
+    lastUpdate.time,
+    lastUpdate.bytes,
+  ]);
 
   return (
     <motion.div
@@ -417,8 +481,8 @@ function TransferItem({
         isFailed
           ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50"
           : isCompleted
-          ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50"
-          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/50"
+            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
       )}
     >
       <div className="flex items-start gap-3">
@@ -466,7 +530,10 @@ function TransferItem({
                   {formatBytes(item.uploadedSize || 0)} /{" "}
                   {formatBytes(item.size)}
                   {speed > 0 && (
-                    <span className="text-gray-400"> • {formatBytes(speed)}/s</span>
+                    <span className="text-gray-400">
+                      {" "}
+                      • {formatBytes(speed)}/s
+                    </span>
                   )}
                 </span>
                 {item.progress > 0 && (
@@ -497,4 +564,3 @@ function TransferItem({
     </motion.div>
   );
 }
-
