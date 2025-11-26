@@ -53,7 +53,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onFileDelete }) => {
 
     try {
       // Call the API to delete the file
-      const response = await fetch(`/api/files/delete?fileId=${fileId}`, {
+      const response = await fetch(`/api/files/${fileId}`, {
         method: "DELETE",
       });
 
