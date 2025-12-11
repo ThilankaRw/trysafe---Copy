@@ -77,7 +77,7 @@ export default async function handler(
 
         if (chunk.serverEncrypted) {
           // Use our secure endpoint for server-encrypted chunks
-          url = `${req.headers.origin || "http://localhost:3000"}/api/files/download-chunk?chunkId=${chunk.id}`;
+          url = `/api/files/download-chunk?chunkId=${chunk.id}`;
         } else {
           // Use direct S3 download for non-server-encrypted chunks
           const command = new GetObjectCommand({
