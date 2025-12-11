@@ -1,7 +1,8 @@
 import { twoFactorClient } from "better-auth/plugins";
-import { passkeyClient } from "better-auth/plugins/passkey";
+import { passkeyClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 export const authClient = createAuthClient({
+  
   emailAndPassword: {
     enabled: true,
   },
@@ -10,10 +11,11 @@ export const authClient = createAuthClient({
     twoFactorClient({
       onTwoFactorRedirect() {
         if (typeof window !== "undefined") {
-          window.location.href = "/2fa-verification"; // Next.js redirect is not available here
+          window.location.href = "/2fa";
         }
       },
     }),
   ],
+
 });
 // Handle the 2FA verification globally

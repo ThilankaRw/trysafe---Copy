@@ -10,6 +10,7 @@ import {
 } from "../components/ui/card";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
+import { authClient } from "@/lib/auth-client";
 
 export function TwoFactorMethodSelection() {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +29,7 @@ export function TwoFactorMethodSelection() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     if (method && ["sms", "totp", "email"].includes(method)) {
-      router.push(`/2fa-verify?method=${method}`);
+      router.push(`/2fa-verification?method=${method}`);
     } else {
       setError("Invalid 2FA method selected");
     }
@@ -47,10 +48,6 @@ export function TwoFactorMethodSelection() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <RadioGroup name="method" className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="sms" id="sms" />
-              <Label htmlFor="sms">SMS</Label>
-            </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="totp" id="totp" />
               <Label htmlFor="totp">Authenticator App (TOTP)</Label>

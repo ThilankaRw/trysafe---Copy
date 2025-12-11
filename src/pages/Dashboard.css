@@ -1,0 +1,131 @@
+.dashboard-container {
+  background-color: #ffffff;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.dropbox-layout {
+  display: flex;
+  padding: 20px;
+}
+
+.sidebar {
+  width: 250px;
+  border-right: 1px solid #e6e8eb;
+  padding: 20px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+}
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.file-item {
+  border: 1px solid #e6e8eb;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #000000;
+}
+
+.file-item:hover {
+  background-color: #f8f9fa;
+}
+
+.file-item div {
+  color: #000000;
+}
+
+.upload-button {
+  background-color: #0061fe;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.header {
+  padding: 15px 30px;
+  border-bottom: 1px solid #e6e8eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #000000;
+}
+
+.header * {
+  color: #000000;
+}
+
+.header input {
+  padding: 8px 12px;
+  border: 1px solid #e6e8eb;
+  border-radius: 4px;
+  color: #000000;
+}
+
+.header input::placeholder {
+  color: #666666;
+}
+
+.header div {
+  color: #000000;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 20px 0 15px 0;
+  color: #000000;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #000000;
+}
+
+.sidebar-item:hover {
+  background-color: #e77b00;
+}
+
+.sidebar-item i {
+  margin-right: 10px;
+}
+
+.storage-bar {
+  background: #f0f2f5;
+  height: 8px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.storage-used {
+  background: #0061fe;
+  height: 100%;
+  border-radius: 4px;
+  width: 65%;
+}
+
+.storage-info {
+  color: #000000;
+}
+
+.storage-info,
+.storage-used + div {
+  color: #000000;
+}

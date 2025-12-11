@@ -2,16 +2,19 @@ import { useEffect } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { LoginForm } from "../components/loginForm";
+import { ThemeProvider } from "@/components/theme-provider";
+import ThemeToggle from "@/components/ThemeToggle";
 
-export default function LoginPage() {
+function LoginContent() {
   return (
     <main className="flex min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       <div className="flex flex-col md:flex-row w-full">
-        <div className="hidden md:flex md:w-1/2 bg-blue-600 justify-center items-center p-12">
+        <div
+          className="hidden md:flex md:w-1/2 justify-center items-center p-12 bg-cyan-700"
+          // style={{ backgroundColor: "#1F6F82" }}
+        >
           <div className="max-w-md text-white">
-            <h1 className="text-4xl font-bold mb-6">
-              Welcome to EnterpriseCore
-            </h1>
+            <h1 className="text-4xl font-bold mb-6">Welcome to Try Safe</h1>
             <p className="text-xl mb-6">
               Empowering businesses with cutting-edge solutions.
             </p>
@@ -25,19 +28,31 @@ export default function LoginPage() {
         </div>
         <div className="w-full md:w-1/2 flex items-center justify-center p-4 md:p-12">
           <div className="w-full max-w-md space-y-8">
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center">
               <Image
-                src="/placeholder.svg?height=80&width=80"
-                alt="EnterpriseCore Logo"
+                src="/2ss.png"
+                alt="Try Safe Logo"
                 width={80}
                 height={80}
-                className="bg-blue-600 p-2 rounded-full"
+                className="p-2 rounded-full"
+                quality={100}
               />
+              <div className="absolute top-4 right-4">
+                <ThemeToggle />
+              </div>
             </div>
             <LoginForm />
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <LoginContent />
+    </ThemeProvider>
   );
 }

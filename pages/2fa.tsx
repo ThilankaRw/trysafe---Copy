@@ -4,7 +4,7 @@ export default function TwoFactorAuthPage() {
   return (
     <main className="flex min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       <div className="flex flex-col md:flex-row w-full">
-        <div className="hidden md:flex md:w-1/2 bg-blue-600 justify-center items-center p-12">
+        <div className="hidden md:flex md:w-1/2 bg-cyan-700 justify-center items-center p-12">
           <div className="max-w-md text-white">
             <h1 className="text-4xl font-bold mb-6">
               Two-Factor Authentication
@@ -28,7 +28,7 @@ export default function TwoFactorAuthPage() {
                 alt="EnterpriseCore Logo"
                 width={80}
                 height={80}
-                className="bg-blue-600 p-2 rounded-full"
+                className="bg-cyan-700 p-2 rounded-full"
               /> */}
             </div>
             {/* <TwoFactorAuthForm /> */}

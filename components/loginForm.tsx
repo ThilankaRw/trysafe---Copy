@@ -1,4 +1,6 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -17,11 +19,60 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { authClient } from "../lib/auth-client";
+import { useSecureStore } from "@/store/useSecureStore";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const router = useRouter();
+  const { initializeStorage, reinitializeStorage, isInitialized } =
+    useSecureStore();
+
+  useEffect(() => {
+    if (
+      !window.PublicKeyCredential ||
+      !PublicKeyCredential.isConditionalMediationAvailable
+    ) {
+      return;
+    }
+
+    const passkeySignIn = async () => {
+      try {
+        const result = await authClient.signIn.passkey({ autoFill: true });
+        if (result?.error) {
+          // Handle error silently for autofill
+          console.error("Passkey autofill error:", result.error);
+          return;
+        }
+        toast.success("Passkey sign-in successful");
+        router.push("/dashboard");
+      } catch (error) {
+        console.error("Passkey autofill error:", error);
+      }
+    };
+
+    passkeySignIn();
+  }, []);
+
+  const handlePasskeySignIn = async () => {
+    setIsPasskeyLoading(true);
+    try {
+      const result = await authClient.signIn.passkey();
+      if (result?.error) {
+        toast.error(result.error.message || "Passkey sign-in failed");
+        setIsPasskeyLoading(false);
+        return;
+      }
+      toast.success("Passkey sign-in successful");
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Passkey sign-in error:", error);
+      toast.error("An error occurred during passkey sign-in");
+    } finally {
+      setIsPasskeyLoading(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,35 +82,51 @@ export function LoginForm() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    // // Simulate API call
-    // await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const result = await authClient.signIn.email({
+        email,
+        password,
+        rememberMe: formData.get("remember") === "on",
+      });
 
-    // if (email === "user@example.com" && password === "password") {
-    //   toast.success("Login successful");
-    //   router.push("/2fa-selection");
-    // } else {
-    //   toast.error("Invalid email or password");
-    // }
+      if (result?.error) {
+        toast.error(result.error.message || "Authentication failed");
+        setIsLoading(false);
+        return;
+      }
 
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-      callbackURL: "/dashboard",
-    });
+      // After successful login, try to initialize or reinitialize storage
+      try {
+        if (isInitialized) {
+          await reinitializeStorage(password);
+        } else {
+          await initializeStorage(password);
+        }
+      } catch (error) {
+        console.error("Storage initialization failed:", error);
+        toast.error("Failed to initialize secure storage. Please try again.");
+        setIsLoading(false);
+        return;
+      }
 
-    if (error) {
-      toast.error(error.message);
+      // Only redirect after both login and storage initialization succeed
+      toast.success("Login successful");
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("An error occurred during login");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    toast.success("Login successful");
   };
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Enterprise Login</CardTitle>
+        <CardTitle className="text-2xl font-bold">
+          {" "}
+          Login Your Account
+        </CardTitle>
         <CardDescription>
           Enter your credentials to access your account
         </CardDescription>
@@ -74,6 +141,7 @@ export function LoginForm() {
               type="email"
               placeholder="m@example.com"
               required
+              autoComplete="username webauthn"
             />
           </div>
           <div className="space-y-2">
@@ -84,6 +152,7 @@ export function LoginForm() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 required
+                autoComplete="current-password webauthn"
               />
               <Button
                 type="button"
@@ -125,9 +194,23 @@ export function LoginForm() {
             <span className="bg-background px-2 text-muted-foreground">Or</span>
           </div>
         </div>
-        <Button variant="outline" className="w-full">
-          <Key className="mr-2 h-4 w-4" />
-          Sign in with Passkey
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handlePasskeySignIn}
+          disabled={isPasskeyLoading}
+        >
+          {isPasskeyLoading ? (
+            <>
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            <>
+              <Key className="mr-2 h-4 w-4" />
+              Sign in with Passkey
+            </>
+          )}
         </Button>
         <Button variant="outline" className="w-full" asChild>
           <Link href="/create-account">Create an Account</Link>
@@ -137,9 +220,12 @@ export function LoginForm() {
             Forgot password?
           </a>
           <span className="mx-2">•</span>
-          <a href="#" className="text-primary hover:underline">
+          <Link
+            href="/support/contact"
+            className="text-primary hover:underline"
+          >
             Contact IT support
-          </a>
+          </Link>
         </div>
       </CardFooter>
     </Card>

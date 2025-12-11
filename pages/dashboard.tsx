@@ -1,7 +1,10 @@
-export default function Dashboard() {
+import Dashboard from "@/components/dashboard/Dashboard";
+import { ThemeProvider } from "@/components/theme-provider";
+
+export default function DashboardPage() {
   return (
-    <div>
-      <h1>Dashboard</h1>
-    </div>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>
+      <Dashboard />
+    </ThemeProvider>
   );
 }
